@@ -1,3 +1,25 @@
+use std::collections::BTreeSet;
+use itertools::Itertools;
+
+fn main() {
+    let nums: BTreeSet<i32> = INPUT.lines()
+        .map(|l| l.parse().unwrap())
+        .collect::<BTreeSet<i32>>();
+
+    nums.iter()
+        .filter(|&x| nums.contains(&(2020 - x)))
+        .map(|x| x * (2020 - x))
+        .take(1)
+        .for_each(|p| println!("2-Product {}", p));
+
+    nums.iter()
+        .cartesian_product(nums.iter())
+        .filter(|(&x,&y)| nums.contains(&(2020 - x - y)))
+        .map(|(x, y)| x * y * (2020 - x - y))
+        .take(1)
+        .for_each(|p| println!("3-Product {}", p));
+}
+
 const INPUT: &str = r#"1895
 1602
 1592
@@ -199,18 +221,3 @@ const INPUT: &str = r#"1895
 1528
 1246"#;
 
-fn main() {
-    let nums : Vec<i32> = INPUT.lines()
-        .map(|l| l.parse().unwrap())
-        .collect::<Vec<i32>>();
-    for i in 0..nums.len() {
-        for j in 0..nums.len() {
-            for k in 0..nums.len() {
-                if i != j && j != k && i != k && nums[i] + nums[j] + nums[k] == 2020 {
-                    println!("{}", nums[i] * nums[j] * nums[k]);
-                    return;
-                }
-            }
-        }
-    }
-}
