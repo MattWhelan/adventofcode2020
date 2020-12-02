@@ -1,8 +1,9 @@
 use std::str::FromStr;
 use thiserror::Error;
 use anyhow::Result;
-use std::ops::{Range, RangeInclusive};
-use itertools::Itertools;
+use std::ops::{RangeInclusive};
+use regex::Regex;
+use lazy_static::lazy_static;
 
 #[derive(Error, Debug)]
 enum ParseError {
@@ -19,18 +20,15 @@ impl FromStr for Record {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, anyhow::Error> {
-        let parts : Vec<&str> = s.splitn(2, ":").collect();
-        let pw = parts[1].trim();
-        let restriction = parts[0];
-        let res_parts: Vec<&str> = restriction.splitn(2, " ").collect();
-        let rule_str = res_parts[0];
-        let ch = res_parts[1].chars().next().unwrap();
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"^(\d+)-(\d+) (\w): (\w+)$").unwrap();
+        }
+        let caps = RE.captures(s).unwrap();
 
-        let (start, end) = rule_str.splitn(2, "-").collect_tuple::<(&str, &str)>().unwrap();
-        Ok(Record {
-            letter: ch,
-            rule: RangeInclusive::new(start.parse()?, end.parse()?),
-            password: pw.to_string()
+        Ok(Record{
+            rule: RangeInclusive::new(caps[1].parse()?, caps[2].parse()?),
+            letter: caps[3].parse()?,
+            password: caps[4].to_string()
         })
     }
 }
