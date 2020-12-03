@@ -1,23 +1,22 @@
 use anyhow::Result;
-
-fn pos_mul(v: &(i32, i32), x: i32) -> (i32, i32) {
-    (v.0 * x, v.1 * x)
-}
+use two_space::*;
 
 fn main() -> Result<()> {
-    let map: Vec<_> = INPUT.lines()
+    let map: Vec<_> = INPUT
+        .lines()
         .map(|l| l.chars().collect::<Vec<char>>())
         .collect::<Vec<_>>();
 
-    let slope = (3, 1);
+    let slope: Point<i32> = (3, 1).into();
 
-    let tree_count = count_trees(&map, &slope);
+    let tree_count = count_trees(&map, slope);
 
     println!("Trees: {}", tree_count);
 
-    let candidates = vec![(1,1), (3, 1), (5, 1), (7, 1), (1, 2)];
-    let tree_prod : usize= candidates.iter()
-        .map(|s| count_trees(&map, s) as usize)
+    let candidates = vec![(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)];
+    let tree_prod: usize = candidates
+        .iter()
+        .map(|&s| count_trees(&map, s.into()) as usize)
         .product();
 
     println!("Tree Prod: {}", tree_prod);
@@ -25,18 +24,18 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn count_trees(map: &Vec<Vec<char>>, slope: &(i32, i32)) -> i32 {
-    let mut pos = (0, 0);
+fn count_trees(map: &Vec<Vec<char>>, slope: Point<i32>) -> i32 {
+    let mut pos: Point<i32> = (0, 0).into();
     let mut tree_count = 0;
     let mut i = 0;
-    while pos.1 < map.len() as i32 {
-        let row = &map[pos.1 as usize];
-        let ch = row[pos.0 as usize % row.len()];
+    while pos.y < map.len() as i32 {
+        let row = &map[pos.y as usize];
+        let ch = row[pos.x as usize % row.len()];
         if ch.eq(&'#') {
             tree_count += 1
         }
         i += 1;
-        pos = pos_mul(&slope, i);
+        pos = slope * i;
     }
     tree_count
 }
@@ -365,4 +364,3 @@ const INPUT: &str = r#"....#...##.#.........#....#....
 ...#..#...............#........
 .....#.........................
 "#;
-

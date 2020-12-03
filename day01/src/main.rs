@@ -1,8 +1,9 @@
-use std::collections::BTreeSet;
 use itertools::Itertools;
+use std::collections::BTreeSet;
 
 fn main() {
-    let nums: BTreeSet<i32> = INPUT.lines()
+    let nums: BTreeSet<i32> = INPUT
+        .lines()
         .map(|l| l.parse().unwrap())
         .collect::<BTreeSet<i32>>();
 
@@ -14,7 +15,7 @@ fn main() {
 
     nums.iter()
         .cartesian_product(nums.iter())
-        .filter(|(&x,&y)| nums.contains(&(2020 - x - y)))
+        .filter(|(&x, &y)| nums.contains(&(2020 - x - y)))
         .map(|(x, y)| x * y * (2020 - x - y))
         .take(1)
         .for_each(|p| println!("3-Product {}", p));
@@ -220,4 +221,3 @@ const INPUT: &str = r#"1895
 1847
 1528
 1246"#;
-

@@ -1,13 +1,13 @@
-use std::str::FromStr;
-use std::ops::{RangeInclusive};
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
+use std::ops::RangeInclusive;
+use std::str::FromStr;
 
 #[derive(Debug)]
-struct Record{
+struct Record {
     letter: char,
     rule: RangeInclusive<i32>,
-    password: String
+    password: String,
 }
 
 impl FromStr for Record {
@@ -19,44 +19,40 @@ impl FromStr for Record {
         }
         let caps = RE.captures(s).unwrap();
 
-        Ok(Record{
+        Ok(Record {
             rule: RangeInclusive::new(caps[1].parse()?, caps[2].parse()?),
             letter: caps[3].parse()?,
-            password: caps[4].to_string()
+            password: caps[4].to_string(),
         })
     }
 }
 
 fn validate_part_1(x: &Record) -> bool {
-    let count = x.password.chars()
-        .filter(|ch| ch.eq(&x.letter))
-        .count() as i32;
-    return x.rule.contains(&count)
+    let count = x.password.chars().filter(|ch| ch.eq(&x.letter)).count() as i32;
+    return x.rule.contains(&count);
 }
 
 fn validate_part_2(x: &Record) -> bool {
-    let places = vec![x.rule.start()-1, x.rule.end()-1];
-    let count = x.password.char_indices()
+    let places = vec![x.rule.start() - 1, x.rule.end() - 1];
+    let count = x
+        .password
+        .char_indices()
         .filter(|(i, ch)| ch.eq(&x.letter) && places.contains(&(*i as i32)))
         .count();
     return count == 1;
 }
 
-
 fn main() {
-    let input: Vec<Record> = INPUT.lines()
+    let input: Vec<Record> = INPUT
+        .lines()
         .map(|l| l.parse().unwrap())
         .collect::<Vec<_>>();
 
-    let valid_count = input.iter()
-        .filter(|r| validate_part_1(r))
-        .count();
+    let valid_count = input.iter().filter(|r| validate_part_1(r)).count();
 
     println!("Valid 1: {}", valid_count);
 
-    let valid_count_2 = input.iter()
-        .filter(|r| validate_part_2(r))
-        .count();
+    let valid_count_2 = input.iter().filter(|r| validate_part_2(r)).count();
 
     println!("Valid 2: {}", valid_count_2);
 }
@@ -1061,4 +1057,3 @@ const INPUT: &str = r#"2-8 t: pncmjxlvckfbtrjh
 5-18 k: kkkkkkkhkkkklkkkknk
 9-10 t: ttttttttnt
 10-11 x: xxxxxxxxxcv"#;
-
