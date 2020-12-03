@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::ops::{Add, Mul, Neg, Sub};
 
 /// A point in 2-space. Supports addition, scalar multiplication, manhattan_dist.
@@ -57,12 +58,101 @@ where
     }
 }
 
+impl<T> Neg for Point<T>
+where
+    T: Neg<Output = T>,
+    T: Copy,
+{
+    type Output = Point<T>;
+
+    fn neg(self) -> Self::Output {
+        Point {
+            x: -self.x,
+            y: -self.y,
+        }
+    }
+}
+
 impl<T> From<(T, T)> for Point<T> {
     fn from(p: (T, T)) -> Self {
         Point { x: p.0, y: p.1 }
     }
 }
 
+pub trait Grid<Glyph, T>
+where
+    T: TryInto<usize>,
+    Glyph: Copy,
+{
+    fn coord_transform(&self, p: Point<T>) -> Point<T>;
+
+    fn data(&self) -> &Vec<Vec<Glyph>>;
+
+    fn at(&self, p: Point<T>) -> Option<Glyph> {
+        let Point { x, y } = self.coord_transform(p);
+        if let Ok(row) = y.try_into() {
+            if let Ok(col) = x.try_into() {
+                self.data().get(row).and_then(|row| row.get(col).map(|g| *g))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+/// Dense Grid
+pub struct DenseGrid<Glyph, T>
+where
+    T: TryInto<usize>,
+{
+    data: Vec<Vec<Glyph>>,
+    offset: Point<T>,
+}
+
+impl<Glyph, T> DenseGrid<Glyph, T>
+where
+    T: TryInto<usize>,
+    T: Default,
+    Point<T>: Neg<Output = Point<T>>,
+    Glyph: From<char>,
+{
+    pub fn new(glyph_str: &str) -> Self {
+        let data = glyph_str
+            .lines()
+            .map(|l| l.chars().map(|c| c.into()).collect())
+            .collect();
+
+        let offset: Point<T> = Default::default();
+
+        DenseGrid {
+            data,
+            offset,
+        }
+    }
+
+    pub fn with_offset(mut self, origin: Point<T>) -> Self {
+        self.offset = -origin;
+        self
+    }
+}
+
+impl<Glyph, T> Grid<Glyph, T> for DenseGrid<Glyph, T>
+where
+    T: TryInto<usize>,
+    Point<T>: Add<Output = Point<T>>,
+    Point<T>: Copy,
+    Glyph: Copy,
+{
+    fn coord_transform(&self, p: Point<T>) -> Point<T> {
+        p + self.offset
+    }
+
+    fn data(&self) -> &Vec<Vec<Glyph>> {
+        &self.data
+    }
+}
 
 #[cfg(test)]
 mod tests {
