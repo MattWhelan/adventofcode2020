@@ -102,6 +102,13 @@ where
     }
 }
 
+pub fn parse_grid<Glyph: From<char>>(glyph_str: &str) -> Vec<Vec<Glyph>> {
+    glyph_str
+        .lines()
+        .map(|l| l.chars().map(|c| c.into()).collect())
+        .collect()
+}
+
 /// Dense Grid
 pub struct DenseGrid<Glyph, T>
 where
@@ -118,17 +125,10 @@ where
     Point<T>: Neg<Output = Point<T>>,
     Glyph: From<char>,
 {
-    pub fn new(glyph_str: &str) -> Self {
-        let data = glyph_str
-            .lines()
-            .map(|l| l.chars().map(|c| c.into()).collect())
-            .collect();
-
-        let offset: Point<T> = Default::default();
-
+    pub fn new(src: &str) -> Self {
         DenseGrid {
-            data,
-            offset,
+            data: parse_grid(src),
+            offset: Default::default(),
         }
     }
 
@@ -154,9 +154,10 @@ where
     }
 }
 
+
 #[cfg(test)]
 mod tests {
-    use crate::Point;
+    use crate::{parse_grid, Point};
 
     #[test]
     fn add_test() {
@@ -185,5 +186,30 @@ mod tests {
 
         assert_eq!(p0.manhattan_dist(&p1), 5);
         assert_eq!(p1.manhattan_dist(&p0), 5);
+    }
+
+    #[test]
+    fn parse_grid_test() {
+        #[derive(Debug, Eq, PartialEq)]
+        enum Tiles {
+            Space, Tree
+        }
+
+        impl From<char> for Tiles {
+            fn from(ch: char) -> Self {
+                match ch {
+                    '#' => Tiles::Tree,
+                    '.' => Tiles::Space,
+                    _ => panic!("Invalid character")
+                }
+            }
+        }
+
+        let in_str = "..#\n.#.";
+
+        let data = parse_grid::<Tiles>(in_str);
+        assert_eq!(data[0][2], Tiles::Tree);
+        assert_eq!(data[1][1], Tiles::Tree);
+        assert_eq!(data[0][0], Tiles::Space);
     }
 }
