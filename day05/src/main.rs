@@ -36,12 +36,27 @@ fn main() -> Result<()>{
 
     println!("Max seat id {}", max_id);
 
-    passes.iter()
+    let sorted_ids = passes.iter()
         .map(|p| p.row as u32 * 8 + p.seat as u32)
         .sorted()
+        .collect::<Vec<u32>>();
+
+    // We'll be in a gap: just before the spot where the offset from the index to the id changes.
+
+    // We're not the first one; this is the initial offset
+    let initial_offset = sorted_ids[0] as usize;
+
+    let next_seat_v = sorted_ids.iter()
         .enumerate()
-        .map(|(i, id)| (id, id as usize - i))
-        .for_each(|pair| println!("{}, {}", pair.0, pair.1));
+        .filter(|(i, id)| **id as usize - i > initial_offset)
+        .take(1)
+        .map(|(_, id)| *id)
+        .collect::<Vec<u32>>();
+
+    match next_seat_v.get(0) {
+        Some(next_id) => println!("Your ID: {}", next_id-1),
+        None => println!("No seat for you!")
+    }
 
     Ok(())
 }
