@@ -1,7 +1,7 @@
-use std::str::FromStr;
-use anyhow::{Result};
-use std::collections::{HashSet, HashMap};
+use anyhow::Result;
 use itertools::Itertools;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 
 #[derive(Debug)]
 struct Record(HashMap<String, String>);
@@ -10,24 +10,33 @@ impl FromStr for Record {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let data = s.split_whitespace()
-            .map(|pair| pair.splitn(2, ":").map(|s| s.to_string()).collect_tuple().unwrap())
+        let data = s
+            .split_whitespace()
+            .map(|pair| {
+                pair.splitn(2, ":")
+                    .map(|s| s.to_string())
+                    .collect_tuple()
+                    .unwrap()
+            })
             .collect::<HashMap<String, String>>();
         Ok(Record(data))
     }
 }
 
-fn main() -> Result<()>{
+fn main() -> Result<()> {
     let all_fields = vec![
-    "byr", // (Birth Year)
-    "iyr", // (Issue Year)
-    "eyr", // (Expiration Year)
-    "hgt", // (Height)
-    "hcl", // (Hair Color)
-    "ecl", // (Eye Color)
-    "pid", // (Passport ID)
-    "cid", // (Country ID)
-    ].iter().map(|s| s.to_string()).collect::<HashSet<String>>();
+        "byr", // (Birth Year)
+        "iyr", // (Issue Year)
+        "eyr", // (Expiration Year)
+        "hgt", // (Height)
+        "hcl", // (Hair Color)
+        "ecl", // (Eye Color)
+        "pid", // (Passport ID)
+        "cid", // (Country ID)
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect::<HashSet<String>>();
 
     let required = {
         let mut f = all_fields.clone();
@@ -36,12 +45,14 @@ fn main() -> Result<()>{
     };
 
     let selected_input = INPUT;
-    let input: Vec<Record> = selected_input.split("\n\n")
+    let input: Vec<Record> = selected_input
+        .split("\n\n")
         .map(|l| l.parse().unwrap())
         .collect::<Vec<_>>();
 
-    let valid_count = input.iter()
-        .filter(|r|{
+    let valid_count = input
+        .iter()
+        .filter(|r| {
             let key_set = r.0.keys().map(|s| s.clone()).collect();
             required.is_subset(&key_set)
         })
@@ -63,8 +74,9 @@ fn main() -> Result<()>{
     let ecl_re = regex::Regex::new(r"^(amb|blu|brn|gry|grn|hzl|oth)$").unwrap();
     // pid (Passport ID) - a nine-digit number, including leading zeroes.
     let pid_re = regex::Regex::new(r"^\d{9}$").unwrap();
-    let valid_count_2 = input.iter()
-        .filter(|r|{
+    let valid_count_2 = input
+        .iter()
+        .filter(|r| {
             let key_set = r.0.keys().map(|s| s.clone()).collect();
             required.is_subset(&key_set)
         })
@@ -75,39 +87,28 @@ fn main() -> Result<()>{
                         let i: i32 = v.parse().unwrap();
                         i >= 1920 && i <= 2002
                     }
-                },
+                }
                 "iyr" => {
                     year_re.is_match(v) && {
                         let i: i32 = v.parse().unwrap();
                         i >= 2010 && i <= 2020
                     }
-                },
+                }
                 "eyr" => {
                     year_re.is_match(v) && {
                         let i: i32 = v.parse().unwrap();
                         i >= 2020 && i <= 2030
                     }
-                },
-                "hgt" => {
-                    hgt_re.captures(v)
-                        .map_or(false, |caps| {
-                            match &caps[2] {
-                                "cm" => (150..=193).contains(&caps[1].parse::<i32>().unwrap()),
-                                "in" => (59..=76).contains(&caps[1].parse::<i32>().unwrap()),
-                                _ => false
-                            }
-                        })
-                },
-                "hcl" => {
-                    hcl_re.is_match(v)
-                },
-                "ecl" => {
-                    ecl_re.is_match(v)
-                },
-                "pid" => {
-                    pid_re.is_match(v)
-                },
-                _ => true
+                }
+                "hgt" => hgt_re.captures(v).map_or(false, |caps| match &caps[2] {
+                    "cm" => (150..=193).contains(&caps[1].parse::<i32>().unwrap()),
+                    "in" => (59..=76).contains(&caps[1].parse::<i32>().unwrap()),
+                    _ => false,
+                }),
+                "hcl" => hcl_re.is_match(v),
+                "ecl" => ecl_re.is_match(v),
+                "pid" => pid_re.is_match(v),
+                _ => true,
             })
         })
         .count();
@@ -1255,4 +1256,3 @@ cid:120 eyr:2020 hcl:#733820 ecl:blu pid:458522542 byr:1966
 pid:#725759
 hcl:#602927 iyr:2013 byr:2003 eyr:2023 cid:100
 "#;
-

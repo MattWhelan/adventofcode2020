@@ -92,7 +92,9 @@ where
         let Point { x, y } = self.coord_transform(p);
         if let Ok(row) = y.try_into() {
             if let Ok(col) = x.try_into() {
-                self.data().get(row).and_then(|row| row.get(col).map(|g| *g))
+                self.data()
+                    .get(row)
+                    .and_then(|row| row.get(col).map(|g| *g))
             } else {
                 None
             }
@@ -154,7 +156,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::{parse_grid, Point};
@@ -192,7 +193,8 @@ mod tests {
     fn parse_grid_test() {
         #[derive(Debug, Eq, PartialEq)]
         enum Tiles {
-            Space, Tree
+            Space,
+            Tree,
         }
 
         impl From<char> for Tiles {
@@ -200,7 +202,7 @@ mod tests {
                 match ch {
                     '#' => Tiles::Tree,
                     '.' => Tiles::Space,
-                    _ => panic!("Invalid character")
+                    _ => panic!("Invalid character"),
                 }
             }
         }

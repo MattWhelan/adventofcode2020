@@ -1,6 +1,6 @@
-use std::str::FromStr;
 use anyhow::Result;
 use itertools::Itertools;
+use std::str::FromStr;
 
 #[derive(Debug)]
 struct BoardingPass {
@@ -19,24 +19,26 @@ impl FromStr for BoardingPass {
         let seat_part = &s[7..];
         let seat_bin = seat_part.replace("L", "0").replace("R", "1");
         let seat = u8::from_str_radix(&seat_bin, 2).unwrap();
-        Ok(BoardingPass {
-            row, seat
-        })
+        Ok(BoardingPass { row, seat })
     }
 }
 
-fn main() -> Result<()>{
-    let passes: Vec<BoardingPass> = INPUT.lines()
+fn main() -> Result<()> {
+    let passes: Vec<BoardingPass> = INPUT
+        .lines()
         .map(|l| l.parse().unwrap())
         .collect::<Vec<_>>();
 
-    let max_id = passes.iter()
+    let max_id = passes
+        .iter()
         .map(|p| p.row as u32 * 8 + p.seat as u32)
-        .max().unwrap_or(0);
+        .max()
+        .unwrap_or(0);
 
     println!("Max seat id {}", max_id);
 
-    let sorted_ids = passes.iter()
+    let sorted_ids = passes
+        .iter()
         .map(|p| p.row as u32 * 8 + p.seat as u32)
         .sorted()
         .collect::<Vec<u32>>();
@@ -46,7 +48,8 @@ fn main() -> Result<()>{
     // We're not the first one; this is the initial offset
     let initial_offset = sorted_ids[0] as usize;
 
-    let next_seat_v = sorted_ids.iter()
+    let next_seat_v = sorted_ids
+        .iter()
         .enumerate()
         .filter(|(i, id)| **id as usize - i > initial_offset)
         .take(1)
@@ -54,8 +57,8 @@ fn main() -> Result<()>{
         .collect::<Vec<u32>>();
 
     match next_seat_v.get(0) {
-        Some(next_id) => println!("Your ID: {}", next_id-1),
-        None => println!("No seat for you!")
+        Some(next_id) => println!("Your ID: {}", next_id - 1),
+        None => println!("No seat for you!"),
     }
 
     Ok(())
@@ -876,4 +879,3 @@ BFFBFBFRLL
 FFBFFFBRRL
 FFBFBFBLLR
 "#;
-
