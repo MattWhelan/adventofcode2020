@@ -15,11 +15,10 @@ impl FromStr for Record {
 fn main() -> Result<()>{
     let input: Vec<Record> = INPUT.lines()
         .map(|l| l.parse().unwrap())
-        .collect::<Vec<_>>();
+        .collect();
 
     dbg!(input);
     Ok(())
 }
 
 const INPUT: &str = r#""#;
-

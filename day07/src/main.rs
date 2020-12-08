@@ -1,13 +1,13 @@
-use std::str::FromStr;
 use anyhow::Result;
-use regex::Regex;
 use lazy_static::lazy_static;
-use std::collections::{HashSet, HashMap};
+use regex::Regex;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone)]
 struct Rule {
     contained: Vec<(u32, String)>,
-    by: String
+    by: String,
 }
 
 impl FromStr for Rule {
@@ -18,13 +18,15 @@ impl FromStr for Rule {
         let by_part = parts.next().unwrap();
         let contained = parts.next().unwrap();
 
-        lazy_static!{
+        lazy_static! {
             static ref BY_PATTERN: Regex = Regex::new(r"^(\w+ \w+) bag.").unwrap();
-            static ref CONTAINS_PATTERN: Regex = Regex::new(r"(\d+) (\w+ \w+) bag[s,\.]*\s?").unwrap();
+            static ref CONTAINS_PATTERN: Regex =
+                Regex::new(r"(\d+) (\w+ \w+) bag[s,\.]*\s?").unwrap();
         }
         let by = BY_PATTERN.captures(by_part).expect("By match failed")[1].to_string();
 
-        let contained = CONTAINS_PATTERN.captures_iter(contained)
+        let contained = CONTAINS_PATTERN
+            .captures_iter(contained)
             .map(|caps| (caps[1].parse::<u32>().unwrap(), caps[2].to_string()))
             .collect();
 
@@ -32,22 +34,27 @@ impl FromStr for Rule {
     }
 }
 
-fn main() -> Result<()>{
-    let rules: Vec<Rule> = INPUT.lines()
+fn main() -> Result<()> {
+    let rules: Vec<Rule> = INPUT
+        .lines()
         .map(|l| l.parse().unwrap())
         .collect::<Vec<_>>();
 
-    let can_contain: Vec<_> = rules.iter()
+    let can_contain: Vec<_> = rules
+        .iter()
         .flat_map(|r| {
             let by = r.by.clone();
-            r.contained.iter()
+            r.contained
+                .iter()
                 .map(move |(_, color)| (color.clone(), by.clone()))
-        }).collect();
+        })
+        .collect();
 
     let containers = search("shiny gold", &can_contain[..]);
     println!("Containers: {} {:?}", containers.len(), containers);
 
-    let rule_map = rules.iter()
+    let rule_map = rules
+        .iter()
         .map(|r| (r.by.clone(), r.clone()))
         .collect::<HashMap<String, Rule>>();
 
@@ -58,13 +65,16 @@ fn main() -> Result<()>{
 }
 
 fn count_bags(needle: &str, rules: &HashMap<String, Rule>) -> u32 {
-    rules[needle].contained.iter()
+    rules[needle]
+        .contained
+        .iter()
         .map(|(num, color)| num + num * count_bags(color, rules))
         .sum()
 }
 
 fn search<'a>(needle: &str, haystack: &'a [(String, String)]) -> HashSet<&'a str> {
-    let ret: Vec<&str> = haystack.iter()
+    let ret: Vec<&str> = haystack
+        .iter()
         .filter(|(contained, _)| contained.eq(needle))
         .map(|(_, by)| by.as_str())
         .collect();
