@@ -11,9 +11,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.34"
+version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf8dcb5b4bbaa28653b647d8c77bd4ed40183b48882e130c1f1ffb73de069fd7"
+checksum = "2c0df63cb2955042487fad3aefd2c6e3ae7389ac5dc1beb28921de0b69f779d4"
 
 [[package]]
 name = "day01"
@@ -100,6 +100,20 @@ dependencies = [
  "anyhow",
  "itertools",
  "lazy_static",
+ "machine",
+ "regex",
+ "thiserror",
+ "two_space",
+]
+
+[[package]]
+name = "day09"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "lazy_static",
+ "machine",
  "regex",
  "thiserror",
  "two_space",
@@ -125,6 +139,13 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
+name = "machine"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
 
 [[package]]
 name = "memchr"

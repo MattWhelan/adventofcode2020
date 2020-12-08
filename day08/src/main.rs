@@ -1,122 +1,19 @@
-use crate::Instruction::{Acc, Jmp, Nop};
 use anyhow::Result;
-use core::fmt;
-use std::collections::HashSet;
-use std::fmt::{Display, Formatter};
-use std::str::FromStr;
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-enum Instruction {
-    Acc(isize),
-    Jmp(isize),
-    Nop(isize),
-}
-
-impl Display for Instruction {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Acc(x) => write!(f, "acc {}", x),
-            Jmp(x) => write!(f, "jmp {}", x),
-            Nop(x) => write!(f, "nop {}", x),
-        }
-    }
-}
-
-impl FromStr for Instruction {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.splitn(2, " ");
-        let op = parts.next();
-        let arg = parts.next().unwrap().parse().expect("Parse failed");
-        match op {
-            Some("acc") => Ok(Instruction::Acc(arg)),
-            Some("jmp") => Ok(Instruction::Jmp(arg)),
-            Some("nop") => Ok(Instruction::Nop(arg)),
-            Some(s) => Err(Self::Err::msg(format!("Bad input {}", s))),
-            None => Err(Self::Err::msg("Missing instruction")),
-        }
-    }
-}
-
-struct Machine {
-    acc: isize,
-    ip: usize,
-}
-
-impl Machine {
-    fn new() -> Self {
-        Self { acc: 0, ip: 0 }
-    }
-
-    fn dump_ins(log: &[&Instruction]) {
-        for ins in log {
-            println!("{}", ins);
-        }
-    }
-
-    fn discover_loop(&mut self, prog: &[Instruction]) -> Result<isize, (isize, usize)> {
-        let mut ip_set: HashSet<usize> = HashSet::new();
-        let mut ins_list = Vec::new();
-
-        while self.ip < prog.len() {
-            if ip_set.contains(&self.ip) {
-                // Self::dump_ins(&ins_list);
-                return Err((self.acc, self.ip));
-            }
-            ip_set.insert(self.ip);
-
-            let ins = &prog[self.ip];
-            ins_list.push(ins);
-            let changes = match ins {
-                Instruction::Nop(_) => (0, 1),
-                Instruction::Acc(x) => (*x, 1),
-                Instruction::Jmp(x) => (0, *x),
-            };
-            self.acc += changes.0;
-            self.ip = (self.ip as isize + changes.1) as usize;
-        }
-
-        if self.ip == prog.len() {
-            Ok(self.acc)
-        } else {
-            // Self::dump_ins(&ins_list);
-            return Err((self.acc, self.ip));
-        }
-    }
-
-    fn run(&mut self, prog: &[Instruction]) -> (isize, usize) {
-        while self.ip < prog.len() {
-            let ins = &prog[self.ip];
-            let changes = match ins {
-                Instruction::Nop(_) => (0, 1),
-                Instruction::Acc(x) => (*x, 1),
-                Instruction::Jmp(x) => (0, *x),
-            };
-            self.acc += changes.0;
-            self.ip = (self.ip as isize + changes.1) as usize;
-        }
-
-        (self.acc, self.ip)
-    }
-
-    fn get_acc(&self) -> isize {
-        self.acc
-    }
-}
+use machine::*;
 
 fn main() -> Result<()> {
     let input: Vec<_> = INPUT.lines().map(|l| l.parse().unwrap()).collect();
 
     let mut m = Machine::new();
-    dbg!(m.discover_loop(&input));
-    println!("Acc before loop {}", m.get_acc());
+    if let Err((acc, _)) = m.discover_loop(&input) {
+        println!("Acc before loop {}", acc);
+    }
 
     for (i, ins) in input.iter().enumerate() {
         let replacement = match ins {
-            Acc(_) => continue,
-            Jmp(x) => Nop(*x),
-            Nop(x) => Jmp(*x),
+            Instruction::Acc(_) => continue,
+            Instruction::Jmp(x) => Instruction::Nop(*x),
+            Instruction::Nop(x) => Instruction::Jmp(*x),
         };
 
         let mut m2 = Machine::new();

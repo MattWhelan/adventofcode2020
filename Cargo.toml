@@ -3,4 +3,5 @@
 members = [
     "day*",
     "two_space",
+    "machine",
 ]
