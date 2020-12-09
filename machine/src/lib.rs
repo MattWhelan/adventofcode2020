@@ -24,7 +24,8 @@ impl Instruction {
     }
 
     pub fn parse_prog(input: &str) -> Vec<Self> {
-        input.lines()
+        input
+            .lines()
             .map(|l| l.parse().expect("Could not parse instruction"))
             .collect()
     }
@@ -72,14 +73,14 @@ impl RegisterFile {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Machine {
-    reg: RegisterFile
+    reg: RegisterFile,
 }
 
 pub trait Watcher {
     fn log(&mut self, ins: &Instruction, reg: &RegisterFile);
     fn check_abort(&self, ins: &Instruction, reg: &RegisterFile) -> bool;
 
-    fn dump_log<'a, L: IntoIterator<Item=&'a Instruction>>(log: L) {
+    fn dump_log<'a, L: IntoIterator<Item = &'a Instruction>>(log: L) {
         for ins in log {
             println!("{}", ins);
         }
@@ -89,11 +90,15 @@ pub trait Watcher {
 impl Machine {
     pub fn new() -> Self {
         Self {
-            reg: RegisterFile::new()
+            reg: RegisterFile::new(),
         }
     }
 
-    pub fn run_debug<W: Watcher>(&mut self, prog: &[Instruction], watcher: &mut W) -> Result<RegisterFile, RegisterFile> {
+    pub fn run_debug<W: Watcher>(
+        &mut self,
+        prog: &[Instruction],
+        watcher: &mut W,
+    ) -> Result<RegisterFile, RegisterFile> {
         while let Some(ins) = prog.get(self.reg.ip) {
             if watcher.check_abort(ins, &self.reg) {
                 return Err(self.reg);
@@ -125,7 +130,7 @@ impl Machine {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Instruction, Machine, Watcher, RegisterFile};
+    use crate::{Instruction, Machine, RegisterFile, Watcher};
 
     const PROG: &str = r#"nop +0
 acc +1
