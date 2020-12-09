@@ -1,12 +1,31 @@
 use anyhow::Result;
 use machine::*;
+use std::collections::HashSet;
+
+struct LoopWatcher {
+    ip_set: HashSet<usize>,
+}
+
+impl Watcher for LoopWatcher {
+    fn log(&mut self, _ins: &Instruction, reg: &RegisterFile) {
+        self.ip_set.insert(reg.ip);
+    }
+
+    fn check_abort(&self, _ins: &Instruction, reg: &RegisterFile) -> bool {
+        self.ip_set.contains(&reg.ip)
+    }
+}
 
 fn main() -> Result<()> {
-    let input: Vec<_> = INPUT.lines().map(|l| l.parse().unwrap()).collect();
+    let input = Instruction::parse_prog(INPUT);
 
     let mut m = Machine::new();
-    if let Err((acc, _)) = m.discover_loop(&input) {
-        println!("Acc before loop {}", acc);
+    let mut watcher = LoopWatcher {
+        ip_set: HashSet::new(),
+    };
+
+    if let Err(r) = m.run_debug(&input, &mut watcher) {
+        println!("Acc before loop {}", r.acc);
     }
 
     for (i, ins) in input.iter().enumerate() {
@@ -17,12 +36,15 @@ fn main() -> Result<()> {
         };
 
         let mut m2 = Machine::new();
+        let mut watcher2 = LoopWatcher {
+            ip_set: HashSet::new(),
+        };
         let mut modified = input.clone();
         modified[i] = replacement;
-        if let Ok(acc) = m2.discover_loop(&modified) {
+        if let Ok(reg) = m2.run_debug(&modified, &mut watcher2) {
             println!(
                 "Terminal acc {}; changed instruction {} to {}",
-                acc, i, replacement
+                reg.acc, i, replacement
             );
             break;
         }

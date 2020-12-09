@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -11,7 +10,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn exec(&self, m: &mut Machine) {
+    pub fn exec(&self, m: &mut RegisterFile) {
         match self {
             Instruction::Nop(_) => m.ip += 1,
             Instruction::Acc(x) => {
@@ -22,6 +21,12 @@ impl Instruction {
                 m.ip = (m.ip as isize + x) as usize;
             }
         };
+    }
+
+    pub fn parse_prog(input: &str) -> Vec<Self> {
+        input.lines()
+            .map(|l| l.parse().expect("Could not parse instruction"))
+            .collect()
     }
 }
 
@@ -54,64 +59,117 @@ impl FromStr for Instruction {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Machine {
-    acc: isize,
-    ip: usize,
+pub struct RegisterFile {
+    pub ip: usize,
+    pub acc: isize,
 }
 
-impl Machine {
+impl RegisterFile {
     pub fn new() -> Self {
         Self { acc: 0, ip: 0 }
     }
+}
 
-    pub fn dump_ins(log: &[&Instruction]) {
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Machine {
+    reg: RegisterFile
+}
+
+pub trait Watcher {
+    fn log(&mut self, ins: &Instruction, reg: &RegisterFile);
+    fn check_abort(&self, ins: &Instruction, reg: &RegisterFile) -> bool;
+
+    fn dump_log<'a, L: IntoIterator<Item=&'a Instruction>>(log: L) {
         for ins in log {
             println!("{}", ins);
         }
     }
+}
 
-    pub fn discover_loop(&mut self, prog: &[Instruction]) -> Result<isize, (isize, usize)> {
-        let mut ip_set: HashSet<usize> = HashSet::new();
-        let mut ins_list = Vec::new();
+impl Machine {
+    pub fn new() -> Self {
+        Self {
+            reg: RegisterFile::new()
+        }
+    }
 
-        while self.ip < prog.len() {
-            if ip_set.contains(&self.ip) {
-                // Self::dump_ins(&ins_list);
-                return Err((self.acc, self.ip));
+    pub fn run_debug<W: Watcher>(&mut self, prog: &[Instruction], watcher: &mut W) -> Result<RegisterFile, RegisterFile> {
+        while let Some(ins) = prog.get(self.reg.ip) {
+            if watcher.check_abort(ins, &self.reg) {
+                return Err(self.reg);
             }
-            ip_set.insert(self.ip);
 
-            let ins = &prog[self.ip];
-            ins_list.push(ins);
-            ins.exec(self);
+            watcher.log(ins, &self.reg);
+            ins.exec(&mut self.reg);
         }
 
-        if self.ip == prog.len() {
-            Ok(self.acc)
+        if self.reg.ip == prog.len() {
+            Ok(self.reg)
         } else {
-            // Self::dump_ins(&ins_list);
-            return Err((self.acc, self.ip));
+            Err(self.reg)
         }
     }
 
-    pub fn run(&mut self, prog: &[Instruction]) -> (isize, usize) {
-        while self.ip < prog.len() {
-            let ins = &prog[self.ip];
-            ins.exec(self);
+    pub fn run(&mut self, prog: &[Instruction]) -> Result<RegisterFile, RegisterFile> {
+        while let Some(ins) = prog.get(self.reg.ip) {
+            ins.exec(&mut self.reg);
         }
 
-        (self.acc, self.ip)
-    }
-
-    pub fn get_acc(&self) -> isize {
-        self.acc
+        if self.reg.ip == prog.len() {
+            Ok(self.reg)
+        } else {
+            Err(self.reg)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::{Instruction, Machine, Watcher, RegisterFile};
+
+    const PROG: &str = r#"nop +0
+acc +1
+jmp +4
+acc +3
+jmp -3
+acc -99
+acc +1
+nop -4
+acc +6"#;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_parse_run() {
+        let prog = Instruction::parse_prog(PROG);
+        let mut m = Machine::new();
+        if let Ok(reg) = m.run(&prog) {
+            assert_eq!(8, reg.acc);
+        } else {
+            panic!("Failed to run program");
+        }
+    }
+
+    #[test]
+    fn test_run_debug() {
+        let prog = Instruction::parse_prog(PROG);
+        let mut m = Machine::new();
+
+        struct CountWatch(i32);
+        impl Watcher for CountWatch {
+            fn log(&mut self, _: &Instruction, _: &RegisterFile) {
+                self.0 += 1
+            }
+
+            fn check_abort(&self, _: &Instruction, _: &RegisterFile) -> bool {
+                false
+            }
+        }
+
+        let mut w = CountWatch(0);
+        if let Ok(reg) = m.run_debug(&prog, &mut w) {
+            assert_eq!(8, reg.acc);
+            assert_eq!(6, w.0);
+        } else {
+            panic!("Failed to run program");
+        }
     }
 }
