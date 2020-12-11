@@ -2,12 +2,8 @@ use anyhow::Result;
 use itertools::Itertools;
 use std::collections::HashMap;
 
-
-fn main() -> Result<()>{
-    let orig_input: Vec<i32> = INPUT.lines()
-        .map(|l| l.parse().unwrap())
-        .sorted()
-        .collect();
+fn main() -> Result<()> {
+    let orig_input: Vec<i32> = INPUT.lines().map(|l| l.parse().unwrap()).sorted().collect();
 
     let mut input = orig_input.clone();
     input.insert(0, 0);
@@ -15,12 +11,14 @@ fn main() -> Result<()>{
     input.push(device);
     //dbg!(&input);
 
-    let counts : HashMap<i32, i32> = input.windows(2)
-        .map(|w| w[1] - w[0])
-        .fold(HashMap::new(), |mut m, d| {
-            *(m.entry(d).or_default()) += 1;
-            m
-        });
+    let counts: HashMap<i32, i32> =
+        input
+            .windows(2)
+            .map(|w| w[1] - w[0])
+            .fold(HashMap::new(), |mut m, d| {
+                *(m.entry(d).or_default()) += 1;
+                m
+            });
 
     //dbg!(&counts);
 
@@ -41,29 +39,24 @@ fn count_arrangements(prefix: i32, nums: &[i32], suffix: i32) -> i128 {
             } else {
                 1
             }
-        },
+        }
         _ => {
             // len >= 2, so pivot is at least 1, and less than len.
             let pivot = nums.len() / 2;
             let left_with = count_arrangements(prefix, &nums[..pivot], nums[pivot]);
-            let right_with = count_arrangements(nums[pivot], &nums[pivot+1..], suffix);
+            let right_with = count_arrangements(nums[pivot], &nums[pivot + 1..], suffix);
             let with = left_with * right_with;
 
-            let prev = if pivot > 0 {
-                nums[pivot-1]
-            } else {
-                prefix
-            };
+            let prev = if pivot > 0 { nums[pivot - 1] } else { prefix };
             let next = if pivot + 1 < nums.len() {
-                nums[pivot+1]
+                nums[pivot + 1]
             } else {
                 suffix
             };
 
             if next - prev <= 3 {
                 // pivot can be removed; count that
-                let without = [&nums[..pivot], &nums[pivot+1..]].concat();
-
+                let without = [&nums[..pivot], &nums[pivot + 1..]].concat();
 
                 with + count_arrangements(prefix, &without, suffix)
             } else {

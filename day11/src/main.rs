@@ -1,5 +1,5 @@
 use anyhow::Result;
-use two_space::{DenseGrid, Point, Grid};
+use two_space::{DenseGrid, Grid, Point};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Tile {
@@ -14,7 +14,7 @@ impl From<char> for Tile {
             'L' => Tile::SEAT,
             '.' => Tile::FLOOR,
             '#' => Tile::FILLED,
-            _ => panic!("Bad tile char")
+            _ => panic!("Bad tile char"),
         }
     }
 }
@@ -29,8 +29,8 @@ impl From<Tile> for char {
     }
 }
 
-fn main() -> Result<()>{
-    let mut grid: DenseGrid<Tile, isize> = two_space::DenseGrid::new(INPUT);
+fn main() -> Result<()> {
+    let mut grid: DenseGrid<Tile> = two_space::DenseGrid::new(INPUT);
 
     loop {
         let last_grid = grid;
@@ -42,14 +42,14 @@ fn main() -> Result<()>{
 
     println!("{}", grid);
 
-    let filled: usize = grid.data()
-        .iter()
-        .map(|row| row.iter().filter(|&&t| t == Tile::FILLED).count())
-        .sum();
+    let filled: usize = grid
+        .enumerate_tiles()
+        .filter(|(g, _)| *g == Tile::FILLED)
+        .count();
 
     println!("{}", filled);
 
-    let mut grid_two: DenseGrid<Tile, isize> = two_space::DenseGrid::new(INPUT);
+    let mut grid_two: DenseGrid<Tile> = two_space::DenseGrid::new(INPUT);
 
     loop {
         let last_grid = grid_two;
@@ -61,108 +61,104 @@ fn main() -> Result<()>{
 
     println!("{}", grid_two);
 
-    let filled_two: usize = grid_two.data()
-        .iter()
-        .map(|row| row.iter().filter(|&&t| t == Tile::FILLED).count())
-        .sum();
+    let filled_two: usize = grid_two
+        .enumerate_tiles()
+        .filter(|(g, _)| *g == Tile::FILLED)
+        .count();
 
     println!("{}", filled_two);
 
     Ok(())
 }
 
-fn cycle(grid: &DenseGrid<Tile, isize>) -> DenseGrid<Tile, isize> {
-    let mut ret: DenseGrid<Tile, isize> = grid.clone();
-    for y in 0..grid.data().len() as isize {
-        for x in 0..grid.data()[y as usize].len() as isize {
-            let count = count_filled(grid, (x, y).into());
-            let new_glyph = match grid.at((x,y).into()).unwrap_or(Tile::FLOOR) {
-                Tile::FLOOR => Tile::FLOOR,
-                Tile::SEAT => if count == 0 {
-                        Tile::FILLED
-                    } else {
-                        Tile::SEAT
-                    },
-                Tile::FILLED => if count >= 4 {
-                    Tile::SEAT
-                } else {
+fn cycle(grid: &DenseGrid<Tile>) -> DenseGrid<Tile> {
+    grid.transform(|g, p| {
+        let count = count_filled(grid, p);
+        match g {
+            Tile::FLOOR => Tile::FLOOR,
+            Tile::SEAT => {
+                if count == 0 {
                     Tile::FILLED
-                }
-            };
-            ret.set_at((x, y).into(), new_glyph);
-        }
-    }
-
-    ret
-}
-
-fn cycle_ranged(grid: &DenseGrid<Tile, isize>) -> DenseGrid<Tile, isize> {
-    let mut ret: DenseGrid<Tile, isize> = grid.clone();
-    for y in 0..grid.data().len() as isize {
-        for x in 0..grid.data()[y as usize].len() as isize {
-            let count = count_filled_ranged(grid, (x, y).into());
-            let new_glyph = match grid.at((x,y).into()).unwrap_or(Tile::FLOOR) {
-                Tile::FLOOR => Tile::FLOOR,
-                Tile::SEAT => if count == 0 {
-                        Tile::FILLED
-                    } else {
-                        Tile::SEAT
-                    },
-                Tile::FILLED => if count >= 5 {
-                    Tile::SEAT
                 } else {
-                    Tile::FILLED
+                    Tile::SEAT
                 }
-            };
-            ret.set_at((x, y).into(), new_glyph);
-        }
-    }
-
-    ret
-}
-
-fn count_filled(grid: &DenseGrid<Tile, isize>, loc: Point<isize>) -> u32 {
-    [
-        (-1 as isize, -1 as isize),
-        (0, -1),
-        (1, -1),
-        (-1, 0),
-        (1, 0),
-        (-1, 1),
-        (0, 1),
-        (1, 1),
-    ].iter()
-        .map(|p| Point::from(p))
-        .map(|offset| offset + loc)
-        .map(|p| grid.at(p).unwrap_or(Tile::FLOOR))
-        .filter(|&t| t == Tile::FILLED)
-        .count() as u32
-}
-
-fn count_filled_ranged(grid: &DenseGrid<Tile, isize>, loc: Point<isize>) -> u32 {
-    [
-        (-1 as isize, -1 as isize),
-        (0, -1),
-        (1, -1),
-        (-1, 0),
-        (1, 0),
-        (-1, 1),
-        (0, 1),
-        (1, 1),
-    ].iter()
-        .map(|p| Point::from(p))
-        .map(|offset| {
-            let mut loc = offset + loc;
-            while let Some(Tile::FLOOR) = grid.at(loc) {
-                loc = offset + loc
             }
-            loc
-        })
-        .map(|p| {
-            grid.at(p).unwrap_or(Tile::FLOOR)
-        })
-        .filter(|&t| t == Tile::FILLED)
-        .count() as u32
+            Tile::FILLED => {
+                if count >= 4 {
+                    Tile::SEAT
+                } else {
+                    Tile::FILLED
+                }
+            }
+        }
+    })
+}
+
+fn cycle_ranged(grid: &DenseGrid<Tile>) -> DenseGrid<Tile> {
+    grid.transform(|g, p| {
+        let count = count_filled_ranged(grid, p);
+        match g {
+            Tile::FLOOR => Tile::FLOOR,
+            Tile::SEAT => {
+                if count == 0 {
+                    Tile::FILLED
+                } else {
+                    Tile::SEAT
+                }
+            }
+            Tile::FILLED => {
+                if count >= 5 {
+                    Tile::SEAT
+                } else {
+                    Tile::FILLED
+                }
+            }
+        }
+    })
+}
+
+fn count_filled(grid: &DenseGrid<Tile>, loc: Point) -> u32 {
+    [
+        (-1 as isize, -1 as isize),
+        (0, -1),
+        (1, -1),
+        (-1, 0),
+        (1, 0),
+        (-1, 1),
+        (0, 1),
+        (1, 1),
+    ]
+    .iter()
+    .map(|p| Point::from(p))
+    .map(|offset| offset + loc)
+    .map(|p| grid.at(p).unwrap_or(Tile::FLOOR))
+    .filter(|&t| t == Tile::FILLED)
+    .count() as u32
+}
+
+fn count_filled_ranged(grid: &DenseGrid<Tile>, loc: Point) -> u32 {
+    [
+        (-1 as isize, -1 as isize),
+        (0, -1),
+        (1, -1),
+        (-1, 0),
+        (1, 0),
+        (-1, 1),
+        (0, 1),
+        (1, 1),
+    ]
+    .iter()
+    .map(|p| Point::from(p))
+    .map(|offset| {
+        let mut loc = offset + loc;
+        while let Some(Tile::FLOOR) = grid.at(loc) {
+            loc = offset + loc
+        }
+        loc
+    })
+    .map(|p| grid.at(p).unwrap_or(Tile::FLOOR))
+    .filter(|&t| t == Tile::FILLED)
+    .count() as u32
 }
 
 const INPUT: &str = r#"LLLLLL.LLLL..LLLLLL.LLLLLLLLLLLLLLLLLLLLL.LLLLLL.LLLLLLLL.LLLLL.LLLLLL.L.LL.LLLLLL.LLLLLLLLLLLLLLLL
