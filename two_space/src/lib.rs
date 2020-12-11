@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 use std::ops::{Add, Mul, Neg, Sub};
+use std::fmt::{Display, Formatter};
+use itertools::{Itertools};
 
 /// A point in 2-space. Supports addition, scalar multiplication, manhattan_dist.
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
@@ -73,7 +75,17 @@ where
     }
 }
 
-impl<T> From<(T, T)> for Point<T> {
+impl<T> From<&(T, T)> for Point<T>
+where T: Copy
+{
+    fn from(p: &(T, T)) -> Self {
+        Point { x: p.0, y: p.1 }
+    }
+}
+
+impl<T> From<(T, T)> for Point<T>
+where T: Copy
+{
     fn from(p: (T, T)) -> Self {
         Point { x: p.0, y: p.1 }
     }
@@ -87,6 +99,8 @@ where
     fn coord_transform(&self, p: Point<T>) -> Point<T>;
 
     fn data(&self) -> &Vec<Vec<Glyph>>;
+
+    fn data_mut(&mut self) -> &mut Vec<Vec<Glyph>>;
 
     fn at(&self, p: Point<T>) -> Option<Glyph> {
         let Point { x, y } = self.coord_transform(p);
@@ -102,6 +116,15 @@ where
             None
         }
     }
+
+    fn set_at(&mut self, p: Point<T>, g: Glyph) {
+        let Point { x, y } = self.coord_transform(p);
+        if let Ok(row) = y.try_into() {
+            if let Ok(col) = x.try_into() {
+                self.data_mut()[row][col] = g;
+            }
+        }
+    }
 }
 
 pub fn parse_grid<Glyph: From<char>>(glyph_str: &str) -> Vec<Vec<Glyph>> {
@@ -112,6 +135,7 @@ pub fn parse_grid<Glyph: From<char>>(glyph_str: &str) -> Vec<Vec<Glyph>> {
 }
 
 /// Dense Grid
+#[derive(Clone, Eq, PartialEq)]
 pub struct DenseGrid<Glyph, T>
 where
     T: TryInto<usize>,
@@ -153,6 +177,25 @@ where
 
     fn data(&self) -> &Vec<Vec<Glyph>> {
         &self.data
+    }
+
+    fn data_mut(&mut self) -> &mut Vec<Vec<Glyph>> {
+        &mut self.data
+    }
+}
+
+impl<Glyph, T> Display for DenseGrid<Glyph, T>
+where
+    T: TryInto<usize>,
+    Glyph: Copy,
+    char: From<Glyph>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let s = self.data.iter()
+            .map(|row| row.iter()
+                .map(|&g| char::from(g)).collect::<String>())
+            .join("\n");
+        write!(f, "{}", s)
     }
 }
 
