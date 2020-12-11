@@ -131,8 +131,8 @@ fn count_filled(grid: &DenseGrid<Tile>, loc: Point) -> u32 {
     .iter()
     .map(|p| Point::from(p))
     .map(|offset| offset + loc)
-    .map(|p| grid.at(p).unwrap_or(Tile::FLOOR))
-    .filter(|&t| t == Tile::FILLED)
+    .map(|p| grid.at(p).unwrap_or(&Tile::FLOOR))
+    .filter(|&t| t == &Tile::FILLED)
     .count() as u32
 }
 
@@ -156,8 +156,8 @@ fn count_filled_ranged(grid: &DenseGrid<Tile>, loc: Point) -> u32 {
         }
         loc
     })
-    .map(|p| grid.at(p).unwrap_or(Tile::FLOOR))
-    .filter(|&t| t == Tile::FILLED)
+    .map(|p| grid.at(p).unwrap_or(&Tile::FLOOR))
+    .filter(|&t| t == &Tile::FILLED)
     .count() as u32
 }
 

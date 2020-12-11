@@ -1,11 +1,11 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Mul, Neg};
 
 use itertools::Itertools;
 
 /// A point in 2-space. Supports addition, scalar multiplication, manhattan_dist.
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Point {
     pub x: isize,
     pub y: isize,
@@ -62,7 +62,7 @@ impl Neg for Point {
 
 impl<T> From<&(T, T)> for Point
 where
-    isize: TryFrom<T>,
+    T: TryInto<isize>,
     (T, T): Clone,
 {
     fn from(p: &(T, T)) -> Self {
@@ -72,11 +72,11 @@ where
 
 impl<T> From<(T, T)> for Point
 where
-    isize: TryFrom<T>,
+    T: TryInto<isize>,
 {
     fn from(p: (T, T)) -> Self {
-        if let Ok(x) = isize::try_from(p.0) {
-            if let Ok(y) = isize::try_from(p.1) {
+        if let Ok(x) = p.0.try_into() {
+            if let Ok(y) = p.1.try_into() {
                 return Point { x, y };
             }
         }
@@ -84,23 +84,22 @@ where
     }
 }
 
-pub trait Grid<Glyph>
-where
-    Glyph: Copy,
-{
+pub trait Grid {
+    type Glyph;
+
     fn coord_transform(&self, p: Point) -> Point;
 
-    fn data(&self) -> &Vec<Vec<Glyph>>;
+    fn data(&self) -> &Vec<Vec<Self::Glyph>>;
 
-    fn data_mut(&mut self) -> &mut Vec<Vec<Glyph>>;
+    fn data_mut(&mut self) -> &mut Vec<Vec<Self::Glyph>>;
 
-    fn at(&self, p: Point) -> Option<Glyph> {
+    fn at(&self, p: Point) -> Option<&Self::Glyph> {
         let Point { x, y } = self.coord_transform(p);
         if let Ok(row) = usize::try_from(y) {
             if let Ok(col) = usize::try_from(x) {
                 self.data()
                     .get(row)
-                    .and_then(|row: &Vec<Glyph>| row.get(col).map(|g| *g))
+                    .and_then(|row: &Vec<Self::Glyph>| row.get(col))
             } else {
                 None
             }
@@ -109,7 +108,7 @@ where
         }
     }
 
-    fn set_at(&mut self, p: Point, g: Glyph) {
+    fn set_at(&mut self, p: Point, g: Self::Glyph) {
         let Point { x, y } = self.coord_transform(p);
         if let Ok(row) = usize::try_from(y) {
             if let Ok(col) = usize::try_from(x) {
@@ -119,7 +118,10 @@ where
     }
 }
 
-pub fn parse_grid<Glyph: From<char>>(glyph_str: &str) -> Vec<Vec<Glyph>> {
+pub fn parse_grid<Glyph>(glyph_str: &str) -> Vec<Vec<Glyph>>
+where
+    char: Into<Glyph>
+{
     glyph_str
         .lines()
         .map(|l| l.chars().map(|c| c.into()).collect())
@@ -135,7 +137,7 @@ pub struct DenseGrid<Glyph> {
 
 impl<Glyph> DenseGrid<Glyph>
 where
-    Glyph: From<char>,
+    char: Into<Glyph>,
     Glyph: Clone,
 {
     pub fn new(src: &str) -> Self {
@@ -180,10 +182,9 @@ where
     }
 }
 
-impl<Glyph> Grid<Glyph> for DenseGrid<Glyph>
-where
-    Glyph: Copy,
-{
+impl<Glyph> Grid for DenseGrid<Glyph> {
+    type Glyph = Glyph;
+
     fn coord_transform(&self, p: Point) -> Point {
         p + self.offset
     }
@@ -199,14 +200,18 @@ where
 
 impl<Glyph> Display for DenseGrid<Glyph>
 where
-    Glyph: Copy,
-    char: From<Glyph>,
+    Glyph: Clone,
+    Glyph: Into<char>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let s = self
             .data
             .iter()
-            .map(|row| row.iter().map(|&g| char::from(g)).collect::<String>())
+            .map(|row| {
+                row.iter()
+                    .map(|g| <Glyph as Into<char>>::into(g.clone()))
+                    .collect::<String>()
+            })
             .join("\n");
         write!(f, "{}", s)
     }

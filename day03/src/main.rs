@@ -7,7 +7,7 @@ fn main() -> Result<()> {
         .map(|l| l.chars().collect::<Vec<char>>())
         .collect::<Vec<_>>();
 
-    let slope: Point<i32> = (3, 1).into();
+    let slope: Point = (3, 1).into();
 
     let tree_count = count_trees(&map, slope);
 
@@ -24,11 +24,11 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn count_trees(map: &Vec<Vec<char>>, slope: Point<i32>) -> i32 {
-    let mut pos: Point<i32> = (0, 0).into();
+fn count_trees(map: &Vec<Vec<char>>, slope: Point) -> i32 {
+    let mut pos: Point = (0, 0).into();
     let mut tree_count = 0;
     let mut i = 0;
-    while pos.y < map.len() as i32 {
+    while pos.y < map.len() as isize{
         let row = &map[pos.y as usize];
         let ch = row[pos.x as usize % row.len()];
         if ch.eq(&'#') {
