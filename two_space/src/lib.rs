@@ -1,6 +1,6 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Mul, Neg, Index, IndexMut};
+use std::ops::{Add, Index, IndexMut, Mul, Neg};
 
 use itertools::Itertools;
 use std::str::FromStr;
@@ -25,6 +25,25 @@ impl Point {
         }
 
         d0 + d1
+    }
+
+    pub fn rotate_deg(&self, deg: isize) -> Self {
+        match deg {
+            0 | 360 => self.clone(),
+            90 | -270 => Self {
+                x: -self.y,
+                y: self.x,
+            },
+            180 | -180 => Self {
+                x: -self.x,
+                y: -self.y,
+            },
+            270 | -90 => Self {
+                x: self.y,
+                y: -self.x,
+            },
+            _ => panic!("Bad rotation"),
+        }
     }
 }
 
@@ -96,18 +115,18 @@ impl<Glyph: Clone> DenseStore<Glyph> {
         if grid.is_empty() {
             DenseStore {
                 data: Vec::new(),
-                width: 0
+                width: 0,
             }
         } else {
             DenseStore {
                 data: grid.iter().flatten().cloned().collect(),
-                width: grid[0].len()
+                width: grid[0].len(),
             }
         }
     }
 
     pub fn get(&self, p: Point) -> Option<&Glyph> {
-        let Point { x, y} = p;
+        let Point { x, y } = p;
         let width = self.width as isize;
         if let Ok(i) = usize::try_from(x + y * width) {
             return self.data.get(i);
@@ -116,7 +135,7 @@ impl<Glyph: Clone> DenseStore<Glyph> {
     }
 
     pub fn get_mut(&mut self, p: Point) -> Option<&mut Glyph> {
-        let Point { x, y} = p;
+        let Point { x, y } = p;
         let width = self.width as isize;
         if let Ok(i) = usize::try_from(x + y * width) {
             return self.data.get_mut(i);
@@ -126,26 +145,22 @@ impl<Glyph: Clone> DenseStore<Glyph> {
 
     pub fn tiles<'a>(&'a self) -> impl Iterator<Item = (&'a Glyph, Point)> + 'a {
         let width = self.width;
-        self.data.iter()
-            .enumerate()
-            .map(move |(i, g)| {
-                let y = (i / width) as isize;
-                let x = (i % width) as isize;
-                let p = (x, y).into();
-                (g, p)
-            })
+        self.data.iter().enumerate().map(move |(i, g)| {
+            let y = (i / width) as isize;
+            let x = (i % width) as isize;
+            let p = (x, y).into();
+            (g, p)
+        })
     }
 
     pub fn tiles_mut(&mut self) -> impl Iterator<Item = (&mut Glyph, Point)> + '_ {
         let width = self.width;
-        self.data.iter_mut()
-            .enumerate()
-            .map(move |(i, g)| {
-                let y = (i / width) as isize;
-                let x = (i % width) as isize;
-                let p = (x, y).into();
-                (g, p)
-            })
+        self.data.iter_mut().enumerate().map(move |(i, g)| {
+            let y = (i / width) as isize;
+            let x = (i % width) as isize;
+            let p = (x, y).into();
+            (g, p)
+        })
     }
 
     pub fn width(&self) -> usize {
@@ -172,13 +187,14 @@ impl<Glyph: Clone> IndexMut<Point> for DenseStore<Glyph> {
 }
 
 impl<Glyph> Display for DenseStore<Glyph>
-    where
-        Glyph: Clone,
-        Glyph: Into<char>,
+where
+    Glyph: Clone,
+    Glyph: Into<char>,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let s = self
-            .data.windows(self.width)
+            .data
+            .windows(self.width)
             .map(|row| {
                 row.iter()
                     .map(|g| <Glyph as Into<char>>::into(g.clone()))
@@ -190,7 +206,8 @@ impl<Glyph> Display for DenseStore<Glyph>
 }
 
 impl<Glyph> FromStr for DenseStore<Glyph>
-where Glyph: Clone,
+where
+    Glyph: Clone,
     char: Into<Glyph>,
 {
     type Err = ();
@@ -238,7 +255,7 @@ pub trait Grid {
 
 pub fn parse_grid<Glyph>(glyph_str: &str) -> Vec<Vec<Glyph>>
 where
-    char: Into<Glyph>
+    char: Into<Glyph>,
 {
     glyph_str
         .lines()
@@ -368,6 +385,21 @@ mod tests {
         assert_eq!(p1.manhattan_dist(&p0), 5);
     }
 
+    #[test]
+    fn rotate_test() {
+        let p: Point = (1, 0).into();
+        let p90 = p.rotate_deg(90);
+        let p180 = p.rotate_deg(180);
+        let p270 = p.rotate_deg(270);
+
+        assert_eq!(p90, (0, 1).into());
+        assert_eq!(p180, (-1, 0).into());
+        assert_eq!(p270, (0, -1).into());
+
+        assert_eq!(p, p90.rotate_deg(-90));
+        assert_eq!(p, p180.rotate_deg(-180));
+        assert_eq!(p, p270.rotate_deg(-270));
+    }
     #[test]
     fn parse_grid_test() {
         #[derive(Debug, Eq, PartialEq)]

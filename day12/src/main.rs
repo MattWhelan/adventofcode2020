@@ -1,6 +1,20 @@
-use std::str::FromStr;
 use anyhow::Result;
+use std::str::FromStr;
 use two_space::Point;
+
+const NORTH: Point = Point { x: 0, y: 1 };
+const EAST: Point = Point { x: 1, y: 0 };
+const SOUTH: Point = Point { x: 0, y: -1 };
+const WEST: Point = Point { x: -1, y: 0 };
+const HEADINGS: [Point; 4] = [NORTH, EAST, SOUTH, WEST];
+
+trait Nav {
+    fn go(&mut self, abs_offset: Point);
+
+    fn forward(&mut self, dist: isize);
+
+    fn turn(&mut self, amount: isize);
+}
 
 #[derive(Debug)]
 struct Ship {
@@ -8,25 +22,16 @@ struct Ship {
     position: Point,
 }
 
-const NORTH: Point = Point { x: 0, y: 1 };
-const EAST: Point = Point { x: 1, y: 0 };
-const SOUTH: Point = Point { x: 0, y: -1 };
-const WEST: Point = Point { x: -1, y: 0 };
-const HEADINGS: [Point; 4] = [
-    NORTH,
-    EAST,
-    SOUTH,
-    WEST,
-];
-
 impl Ship {
     fn new() -> Self {
         Self {
-            heading: (1 ,0).into(),
-            position: (0,0).into()
+            heading: (1, 0).into(),
+            position: (0, 0).into(),
         }
     }
+}
 
+impl Nav for Ship {
     fn go(&mut self, abs_offset: Point) {
         self.position = self.position + abs_offset;
     }
@@ -43,14 +48,45 @@ impl Ship {
             -90 => 3,
             -180 => 2,
             -270 => 1,
-            _ => panic!("Bad turn")
+            _ => panic!("Bad turn"),
         };
 
-        if let Some((i, h)) = HEADINGS.iter()
+        if let Some((i, _)) = HEADINGS
+            .iter()
             .enumerate()
-            .find(|(i, h)| *h == &self.heading) {
+            .find(|(_, h)| *h == &self.heading)
+        {
             self.heading = HEADINGS[(i + offset) % HEADINGS.len()]
         }
+    }
+}
+
+#[derive(Debug)]
+struct WaypointShip {
+    waypoint: Point,
+    position: Point,
+}
+
+impl WaypointShip {
+    fn new() -> Self {
+        Self {
+            waypoint: (10, 1).into(),
+            position: (0, 0).into(),
+        }
+    }
+}
+
+impl Nav for WaypointShip {
+    fn go(&mut self, abs_offset: Point) {
+        self.waypoint = self.waypoint + abs_offset;
+    }
+
+    fn forward(&mut self, dist: isize) {
+        self.position = self.position + self.waypoint * dist;
+    }
+
+    fn turn(&mut self, amount: isize) {
+        self.waypoint = self.waypoint.rotate_deg(-amount);
     }
 }
 
@@ -62,7 +98,7 @@ enum Maneuver {
 }
 
 impl Maneuver {
-    fn exec(&self, ship: &mut Ship) {
+    fn exec<N: Nav>(&self, ship: &mut N) {
         match self {
             Maneuver::DIR(off) => {
                 ship.go(*off);
@@ -93,25 +129,32 @@ impl FromStr for Maneuver {
             'R' => Maneuver::TURN(num),
             'L' => Maneuver::TURN(-num),
             'F' => Maneuver::FWD(num),
-            _ => panic!("Bad instruction char")
+            _ => panic!("Bad instruction char"),
         };
         Ok(ret)
     }
 }
 
-fn main() -> Result<()>{
-    let input: Vec<Maneuver> = INPUT.lines()
-        .map(|l| l.parse().unwrap())
-        .collect();
+fn main() -> Result<()> {
+    let input: Vec<Maneuver> = INPUT.lines().map(|l| l.parse().unwrap()).collect();
 
     let mut ship = Ship::new();
 
-    input.iter()
-        .for_each(|m| m.exec(&mut ship));
+    input.iter().for_each(|m| m.exec(&mut ship));
 
-    dbg!(&ship);
+    println!(
+        "Manhattan dist {}",
+        &ship.position.manhattan_dist(&(0, 0).into())
+    );
 
-    println!("Manhattan dist {}", &ship.position.manhattan_dist(&(0,0).into()));
+    let mut way_ship = WaypointShip::new();
+
+    input.iter().for_each(|m| m.exec(&mut way_ship));
+
+    println!(
+        "Manhattan dist {}",
+        &way_ship.position.manhattan_dist(&(0, 0).into())
+    );
     Ok(())
 }
 

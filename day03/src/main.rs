@@ -28,7 +28,7 @@ fn count_trees(map: &Vec<Vec<char>>, slope: Point) -> i32 {
     let mut pos: Point = (0, 0).into();
     let mut tree_count = 0;
     let mut i = 0;
-    while pos.y < map.len() as isize{
+    while pos.y < map.len() as isize {
         let row = &map[pos.y as usize];
         let ch = row[pos.x as usize % row.len()];
         if ch.eq(&'#') {
