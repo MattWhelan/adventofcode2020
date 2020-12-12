@@ -7,7 +7,7 @@ struct Record;
 impl FromStr for Record {
     type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
         Ok(Record)
     }
 }

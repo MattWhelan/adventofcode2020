@@ -12,4 +12,3 @@ itertools = "0.9.0"
 anyhow = "1.0.34"
 thiserror = "1.0.22"
 lazy_static = "1.4.0"
-two_space = { path = "../two_space" }

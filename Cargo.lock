@@ -54,7 +54,6 @@ dependencies = [
  "lazy_static",
  "regex",
  "thiserror",
- "two_space",
 ]
 
 [[package]]
@@ -66,7 +65,6 @@ dependencies = [
  "lazy_static",
  "regex",
  "thiserror",
- "two_space",
 ]
 
 [[package]]
@@ -78,7 +76,6 @@ dependencies = [
  "lazy_static",
  "regex",
  "thiserror",
- "two_space",
 ]
 
 [[package]]
@@ -90,7 +87,6 @@ dependencies = [
  "lazy_static",
  "regex",
  "thiserror",
- "two_space",
 ]
 
 [[package]]
@@ -103,7 +99,6 @@ dependencies = [
  "machine",
  "regex",
  "thiserror",
- "two_space",
 ]
 
 [[package]]
@@ -116,7 +111,6 @@ dependencies = [
  "machine",
  "regex",
  "thiserror",
- "two_space",
 ]
 
 [[package]]
@@ -129,7 +123,6 @@ dependencies = [
  "machine",
  "regex",
  "thiserror",
- "two_space",
 ]
 
 [[package]]

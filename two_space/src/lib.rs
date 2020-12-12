@@ -1,8 +1,9 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Mul, Neg};
+use std::ops::{Add, Mul, Neg, Index, IndexMut};
 
 use itertools::Itertools;
+use std::str::FromStr;
 
 /// A point in 2-space. Supports addition, scalar multiplication, manhattan_dist.
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -84,6 +85,122 @@ where
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Hash)]
+pub struct DenseStore<Glyph> {
+    data: Vec<Glyph>,
+    width: usize,
+}
+
+impl<Glyph: Clone> DenseStore<Glyph> {
+    pub fn new(grid: &Vec<Vec<Glyph>>) -> Self {
+        if grid.is_empty() {
+            DenseStore {
+                data: Vec::new(),
+                width: 0
+            }
+        } else {
+            DenseStore {
+                data: grid.iter().flatten().cloned().collect(),
+                width: grid[0].len()
+            }
+        }
+    }
+
+    pub fn get(&self, p: Point) -> Option<&Glyph> {
+        let Point { x, y} = p;
+        let width = self.width as isize;
+        if let Ok(i) = usize::try_from(x + y * width) {
+            return self.data.get(i);
+        }
+        None
+    }
+
+    pub fn get_mut(&mut self, p: Point) -> Option<&mut Glyph> {
+        let Point { x, y} = p;
+        let width = self.width as isize;
+        if let Ok(i) = usize::try_from(x + y * width) {
+            return self.data.get_mut(i);
+        }
+        None
+    }
+
+    pub fn tiles<'a>(&'a self) -> impl Iterator<Item = (&'a Glyph, Point)> + 'a {
+        let width = self.width;
+        self.data.iter()
+            .enumerate()
+            .map(move |(i, g)| {
+                let y = (i / width) as isize;
+                let x = (i % width) as isize;
+                let p = (x, y).into();
+                (g, p)
+            })
+    }
+
+    pub fn tiles_mut(&mut self) -> impl Iterator<Item = (&mut Glyph, Point)> + '_ {
+        let width = self.width;
+        self.data.iter_mut()
+            .enumerate()
+            .map(move |(i, g)| {
+                let y = (i / width) as isize;
+                let x = (i % width) as isize;
+                let p = (x, y).into();
+                (g, p)
+            })
+    }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.data.len() / self.width
+    }
+}
+
+impl<Glyph: Clone> Index<Point> for DenseStore<Glyph> {
+    type Output = Glyph;
+
+    fn index(&self, index: Point) -> &Self::Output {
+        self.get(index).expect("No such point")
+    }
+}
+
+impl<Glyph: Clone> IndexMut<Point> for DenseStore<Glyph> {
+    fn index_mut(&mut self, index: Point) -> &mut Self::Output {
+        self.get_mut(index).expect("No such point")
+    }
+}
+
+impl<Glyph> Display for DenseStore<Glyph>
+    where
+        Glyph: Clone,
+        Glyph: Into<char>,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let s = self
+            .data.windows(self.width)
+            .map(|row| {
+                row.iter()
+                    .map(|g| <Glyph as Into<char>>::into(g.clone()))
+                    .collect::<String>()
+            })
+            .join("\n");
+        write!(f, "{}", s)
+    }
+}
+
+impl<Glyph> FromStr for DenseStore<Glyph>
+where Glyph: Clone,
+    char: Into<Glyph>,
+{
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let data = parse_grid(s);
+        Ok(DenseStore::new(&data))
+    }
+}
+
 pub trait Grid {
     type Glyph;
 
@@ -108,13 +225,14 @@ pub trait Grid {
         }
     }
 
-    fn set_at(&mut self, p: Point, g: Self::Glyph) {
+    fn at_mut(&mut self, p: Point) -> Option<&mut Self::Glyph> {
         let Point { x, y } = self.coord_transform(p);
         if let Ok(row) = usize::try_from(y) {
             if let Ok(col) = usize::try_from(x) {
-                self.data_mut()[row][col] = g;
+                return Some(&mut self.data_mut()[row][col]);
             }
         }
+        None
     }
 }
 
