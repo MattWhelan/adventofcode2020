@@ -79,18 +79,17 @@ impl Instruction {
                 let pass_thru = *addr & !m.zero_mask;
                 let floating = m.one_mask ^ m.zero_mask;
 
-                for float_value in 0..(1<<floating.count_ones()) {
+                for mut float_value in 0..(1<<floating.count_ones()) {
                     let mut spread_float = 0;
-                    let mut value_bits = float_value;
                     for i in 0..36 {
                         let bit_select = 1 << i;
                         if floating & bit_select != 0 {
-                            let bit = value_bits & 1;
-                            value_bits = value_bits >> 1;
+                            let bit = float_value & 1;
+                            float_value = float_value >> 1;
                             spread_float = spread_float | (bit << i);
                         }
                     }
-                    let a = ((spread_float | m.one_mask)) | pass_thru;
+                    let a = spread_float | m.one_mask | pass_thru;
                     m.mem.insert(a, *value);
                 }
             }
