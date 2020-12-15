@@ -8,11 +8,26 @@ struct Game {
     last_spoken: u64,
 }
 
+impl Game {
+    fn new(init: &[u64]) -> Self {
+        let history: HashMap<u64, usize> = init.iter()
+            .enumerate()
+            .map(|(i, v)| (*v, i))
+            .collect();
+        let turn = history.len() - 1;
+
+        Self {
+            history,
+            turn,
+            last_spoken: *init.last().unwrap()
+        }
+    }
+}
+
 impl Iterator for Game {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.turn += 1;
         let entry = self.history.entry(self.last_spoken);
         let last_time = entry.or_insert(self.turn);
         let ret = self.turn - *last_time;
@@ -20,6 +35,7 @@ impl Iterator for Game {
         *last_time = self.turn;
 
         self.last_spoken = ret as u64;
+        self.turn += 1;
 
         Some(ret)
     }
@@ -31,16 +47,7 @@ fn main() -> Result<()>{
         .collect();
 
     {
-        // init
-        let history: HashMap<u64, usize> = input.iter().enumerate().map(|(i, v)| (*v, i)).collect();
-        let turn = history.len() - 2;
-
-        let g = Game {
-            history,
-            turn,
-            last_spoken: *input.last().unwrap()
-        };
-
+        let g = Game::new(&input);
         let one: Vec<_> = g.take(2020 - input.len()).collect();
 
         let part1 = one.last().unwrap();
@@ -49,15 +56,7 @@ fn main() -> Result<()>{
     }
 
     {
-        // init
-        let history: HashMap<u64, usize> = input.iter().enumerate().map(|(i, v)| (*v, i)).collect();
-        let turn = history.len() - 2;
-
-        let mut g = Game {
-            history,
-            turn,
-            last_spoken: *input.last().unwrap()
-        };
+        let mut g = Game::new(&input);
 
         let part2= g.nth(30000000 - input.len() - 1).unwrap();
 
