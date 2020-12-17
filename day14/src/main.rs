@@ -1,23 +1,17 @@
-use std::str::FromStr;
-use anyhow::Result;
-use regex::{Regex};
 use crate::Instruction::{Mask, Mem};
+use anyhow::Result;
 use lazy_static::lazy_static;
+use regex::Regex;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Instruction {
-    Mask {
-        zeros: u64,
-        ones: u64,
-    },
-    Mem {
-        addr: u64,
-        value: u64
-    }
+    Mask { zeros: u64, ones: u64 },
+    Mem { addr: u64, value: u64 },
 }
 
-const MASK_MASK: u64 = (1<<36) - 1;
+const MASK_MASK: u64 = (1 << 36) - 1;
 impl FromStr for Instruction {
     type Err = anyhow::Error;
 
@@ -35,17 +29,17 @@ impl FromStr for Instruction {
 
                     let zeros_str = val_str.replace("X", "1");
 
-                    let zeros = MASK_MASK &  u64::from_str_radix(&zeros_str, 2)?;
+                    let zeros = MASK_MASK & u64::from_str_radix(&zeros_str, 2)?;
 
                     Ok(Mask { zeros, ones })
-                },
+                }
                 "mem" => {
                     let addr = caps[2].parse()?;
                     let value = caps[3].parse()?;
 
                     Ok(Mem { addr, value })
                 }
-                _ => Err(Self::Err::msg(format!("Parse failure: {}", s)))
+                _ => Err(Self::Err::msg(format!("Parse failure: {}", s))),
             }
         } else {
             Err(Self::Err::msg(format!("Regex fail `{}`", s)))
@@ -79,7 +73,7 @@ impl Instruction {
                 let pass_thru = *addr & !m.zero_mask;
                 let floating = m.one_mask ^ m.zero_mask;
 
-                for mut float_value in 0..(1<<floating.count_ones()) {
+                for mut float_value in 0..(1 << floating.count_ones()) {
                     let mut spread_float = 0;
                     for i in 0..36 {
                         let bit_select = 1 << i;
@@ -103,16 +97,14 @@ struct Machine {
     mem: HashMap<u64, u64>,
 }
 
-fn main() -> Result<()>{
-    let input: Vec<Instruction> = INPUT.lines()
-        .map(|l| l.parse().unwrap())
-        .collect();
+fn main() -> Result<()> {
+    let input: Vec<Instruction> = INPUT.lines().map(|l| l.parse().unwrap()).collect();
 
     {
         let mut m = Machine {
             zero_mask: 0,
             one_mask: 0,
-            mem: HashMap::new()
+            mem: HashMap::new(),
         };
 
         input.iter().for_each(|i| i.exec(&mut m));
@@ -126,7 +118,7 @@ fn main() -> Result<()>{
         let mut m = Machine {
             zero_mask: 0,
             one_mask: 0,
-            mem: HashMap::new()
+            mem: HashMap::new(),
         };
 
         input.iter().for_each(|i| i.exec_v2(&mut m));

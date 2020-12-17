@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use anyhow::Result;
+use std::str::FromStr;
 
 #[derive(Debug)]
 struct Record;
@@ -12,10 +12,8 @@ impl FromStr for Record {
     }
 }
 
-fn main() -> Result<()>{
-    let input: Vec<Record> = INPUT.lines()
-        .map(|l| l.parse().unwrap())
-        .collect();
+fn main() -> Result<()> {
+    let input: Vec<Record> = INPUT.lines().map(|l| l.parse().unwrap()).collect();
 
     dbg!(input);
     Ok(())

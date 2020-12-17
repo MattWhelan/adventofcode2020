@@ -10,16 +10,13 @@ struct Game {
 
 impl Game {
     fn new(init: &[u64]) -> Self {
-        let history: HashMap<u64, usize> = init.iter()
-            .enumerate()
-            .map(|(i, v)| (*v, i))
-            .collect();
+        let history: HashMap<u64, usize> = init.iter().enumerate().map(|(i, v)| (*v, i)).collect();
         let turn = history.len() - 1;
 
         Self {
             history,
             turn,
-            last_spoken: *init.last().unwrap()
+            last_spoken: *init.last().unwrap(),
         }
     }
 }
@@ -41,10 +38,8 @@ impl Iterator for Game {
     }
 }
 
-fn main() -> Result<()>{
-    let input: Vec<u64> = INPUT.split(",")
-        .map(|l| l.parse().unwrap())
-        .collect();
+fn main() -> Result<()> {
+    let input: Vec<u64> = INPUT.split(",").map(|l| l.parse().unwrap()).collect();
 
     {
         let g = Game::new(&input);
@@ -58,7 +53,7 @@ fn main() -> Result<()>{
     {
         let mut g = Game::new(&input);
 
-        let part2= g.nth(30000000 - input.len() - 1).unwrap();
+        let part2 = g.nth(30000000 - input.len() - 1).unwrap();
 
         println!("Part 2: {}", part2);
     }

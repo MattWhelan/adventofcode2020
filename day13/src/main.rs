@@ -1,30 +1,38 @@
 use anyhow::Result;
 use num::Integer;
 
-fn main() -> Result<()>{
+fn main() -> Result<()> {
     let mut lines = INPUT.lines();
     let earliest = lines.next().unwrap().parse::<i32>()?;
-    let departures: Vec<_> = lines.next().unwrap().split(",")
+    let departures: Vec<_> = lines
+        .next()
+        .unwrap()
+        .split(",")
         .map(|s| s.parse::<i32>().ok())
         .collect();
-    let busses: Vec<_> = departures.iter()
+    let busses: Vec<_> = departures
+        .iter()
         .filter(|r| r.is_some())
         .map(|opt| opt.iter().next().unwrap().clone())
         .collect();
 
-    let (minutes, bus) = busses.iter()
+    let (minutes, bus) = busses
+        .iter()
         .map(|b| (b - earliest % b, b))
-        .min_by_key(|(m, _)| *m).unwrap();
+        .min_by_key(|(m, _)| *m)
+        .unwrap();
 
     println!("Bus {} in {} min: {}", bus, minutes, bus * minutes);
 
-    let vals: Vec<_> = departures.iter()
+    let vals: Vec<_> = departures
+        .iter()
         .enumerate()
         .filter(|(_, opt)| opt.is_some())
         .map(|(i, opt)| {
             let id = opt.iter().next().unwrap().clone() as usize;
             (i, id)
-        }).collect();
+        })
+        .collect();
 
     let mut time: usize = 0;
     let mut increment: usize = 1;
