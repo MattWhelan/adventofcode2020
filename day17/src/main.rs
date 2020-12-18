@@ -1,11 +1,10 @@
-use anyhow::Result;
-use std::str::FromStr;
-use std::ops::{Add};
-use std::collections::{HashMap, HashSet};
 use crate::State::Inactive;
-use State::Active;
+use anyhow::Result;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-
+use std::ops::Add;
+use std::str::FromStr;
+use State::Active;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash, Default)]
 struct Point {
@@ -16,7 +15,7 @@ struct Point {
 
 impl<T> From<(T, T, T)> for Point
 where
-    T: Into<i32>
+    T: Into<i32>,
 {
     fn from(p: (T, T, T)) -> Self {
         Self {
@@ -26,7 +25,6 @@ where
         }
     }
 }
-
 
 impl Add for Point {
     type Output = Self;
@@ -41,7 +39,7 @@ impl Add for Point {
 }
 
 impl Point {
-    fn neighbors(&self) -> impl Iterator<Item=Self> {
+    fn neighbors(&self) -> impl Iterator<Item = Self> {
         let mut ret: Vec<Point> = Vec::with_capacity(26);
         for i in -1..2 {
             for j in -1..2 {
@@ -59,7 +57,8 @@ impl Point {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 enum State {
-    Active, Inactive
+    Active,
+    Inactive,
 }
 
 impl From<char> for State {
@@ -67,37 +66,42 @@ impl From<char> for State {
         match ch {
             '#' => Active,
             '.' => Inactive,
-            _ => panic!("Invalid state glyph")
+            _ => panic!("Invalid state glyph"),
         }
     }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 struct Space {
-    state: HashMap<Point, State>
+    state: HashMap<Point, State>,
 }
 
 impl Space {
     fn cycle(&self) -> Self {
         let mut points: HashSet<Point> = self.state.keys().copied().collect();
-        points.extend(self.state.keys()
-            .flat_map(|k| k.neighbors()));
+        points.extend(self.state.keys().flat_map(|k| k.neighbors()));
 
-        let state = points.iter()
+        let state = points
+            .iter()
             .map(|p| {
-                let active_neighbors = p.neighbors()
+                let active_neighbors = p
+                    .neighbors()
                     .filter(|p| self.state.get(p).cloned().unwrap_or(Inactive) == Active)
                     .count();
                 let s = match self.state.get(p).unwrap_or(&Inactive) {
-                    Active => if active_neighbors == 2 || active_neighbors == 3 {
-                        Active
-                    } else {
-                        Inactive
+                    Active => {
+                        if active_neighbors == 2 || active_neighbors == 3 {
+                            Active
+                        } else {
+                            Inactive
+                        }
                     }
-                    Inactive => if active_neighbors == 3 {
-                        Active
-                    } else {
-                        Inactive
+                    Inactive => {
+                        if active_neighbors == 3 {
+                            Active
+                        } else {
+                            Inactive
+                        }
                     }
                 };
 
@@ -105,9 +109,7 @@ impl Space {
             })
             .collect();
 
-        Self {
-            state
-        }
+        Self { state }
     }
 }
 
@@ -115,22 +117,24 @@ impl FromStr for Space {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let state = s.lines()
+        let state = s
+            .lines()
             .enumerate()
             .flat_map(|(row_index, line)| {
                 line.chars()
                     .map(|ch| ch.into())
                     .enumerate()
-                    .map(move |(col_index, state)| ((col_index as i32, -(row_index as i32), 0).into(), state))
+                    .map(move |(col_index, state)| {
+                        ((col_index as i32, -(row_index as i32), 0).into(), state)
+                    })
             })
             .collect();
 
-        Ok(Space{state})
+        Ok(Space { state })
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Hash, Default)]
 struct Point4 {
@@ -142,7 +146,7 @@ struct Point4 {
 
 impl<T> From<(T, T, T, T)> for Point4
 where
-    T: Into<i32>
+    T: Into<i32>,
 {
     fn from(p: (T, T, T, T)) -> Self {
         Self {
@@ -153,7 +157,6 @@ where
         }
     }
 }
-
 
 impl Add for Point4 {
     type Output = Self;
@@ -169,7 +172,7 @@ impl Add for Point4 {
 }
 
 impl Point4 {
-    fn neighbors(&self) -> impl Iterator<Item=Self> {
+    fn neighbors(&self) -> impl Iterator<Item = Self> {
         let mut ret: Vec<Self> = Vec::with_capacity(26);
         for i in -1..2 {
             for j in -1..2 {
@@ -189,30 +192,35 @@ impl Point4 {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 struct HyperSpace {
-    state: HashMap<Point4, State>
+    state: HashMap<Point4, State>,
 }
 
 impl HyperSpace {
     fn cycle(&self) -> Self {
         let mut points: HashSet<Point4> = self.state.keys().copied().collect();
-        points.extend(self.state.keys()
-            .flat_map(|k| k.neighbors()));
+        points.extend(self.state.keys().flat_map(|k| k.neighbors()));
 
-        let state = points.iter()
+        let state = points
+            .iter()
             .map(|p| {
-                let active_neighbors = p.neighbors()
+                let active_neighbors = p
+                    .neighbors()
                     .filter(|p| self.state.get(p).cloned().unwrap_or(Inactive) == Active)
                     .count();
                 let s = match self.state.get(p).unwrap_or(&Inactive) {
-                    Active => if active_neighbors == 2 || active_neighbors == 3 {
-                        Active
-                    } else {
-                        Inactive
+                    Active => {
+                        if active_neighbors == 2 || active_neighbors == 3 {
+                            Active
+                        } else {
+                            Inactive
+                        }
                     }
-                    Inactive => if active_neighbors == 3 {
-                        Active
-                    } else {
-                        Inactive
+                    Inactive => {
+                        if active_neighbors == 3 {
+                            Active
+                        } else {
+                            Inactive
+                        }
                     }
                 };
 
@@ -220,9 +228,7 @@ impl HyperSpace {
             })
             .collect();
 
-        Self {
-            state
-        }
+        Self { state }
     }
 }
 
@@ -230,17 +236,20 @@ impl FromStr for HyperSpace {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let state = s.lines()
+        let state = s
+            .lines()
             .enumerate()
             .flat_map(|(row_index, line)| {
                 line.chars()
                     .map(|ch| ch.into())
                     .enumerate()
-                    .map(move |(col_index, state)| ((col_index as i32, -(row_index as i32), 0, 0).into(), state))
+                    .map(move |(col_index, state)| {
+                        ((col_index as i32, -(row_index as i32), 0, 0).into(), state)
+                    })
             })
             .collect();
 
-        Ok(HyperSpace{state})
+        Ok(HyperSpace { state })
     }
 }
 

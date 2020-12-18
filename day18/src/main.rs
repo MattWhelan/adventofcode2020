@@ -7,7 +7,7 @@ enum Token {
     Mul,
     Add,
     Open,
-    Close
+    Close,
 }
 
 #[derive(Debug, Clone)]
@@ -17,25 +17,41 @@ enum Tree {
         left: Box<Tree>,
         op: Token,
         right: Box<Tree>,
-    }
+    },
 }
 
 impl Tree {
     fn eval(&self) -> i64 {
         match self {
             Tree::Leaf(n) => *n as i64,
-            Tree::Branch { left, op, right } => {
-                match op {
-                    Token::Mul => {
-                        left.eval() * right.eval()
-                    },
-                    Token::Add => {
-                        left.eval() + right.eval()
-                    },
-                    _ => panic!("Eval error, bad op token")
-                }
-            }
+            Tree::Branch { left, op, right } => match op {
+                Token::Mul => left.eval() * right.eval(),
+                Token::Add => left.eval() + right.eval(),
+                _ => panic!("Eval error, bad op token"),
+            },
         }
+    }
+}
+
+impl Tree {
+    fn tokenize(s: &str) -> Vec<Token> {
+        s.chars()
+            .filter(|ch| !ch.is_whitespace())
+            .map(|ch| match ch {
+                '*' => Token::Mul,
+                '+' => Token::Add,
+                '(' => Token::Open,
+                ')' => Token::Close,
+                d => Token::Num(d as i32 - '0' as i32),
+            })
+            .collect()
+    }
+
+    fn parse_with_precedence(s: &str) -> Result<Self, anyhow::Error> {
+        let tokens = Self::tokenize(s);
+
+        let (ret, _) = PrecedenceParser::parse_tree(&tokens)?;
+        Ok(ret)
     }
 }
 
@@ -43,181 +59,106 @@ impl FromStr for Tree {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let tokens: Vec<Token> = s.chars()
-            .filter(|ch| !ch.is_whitespace())
-            .map(|ch| match ch {
-                '*' => Token::Mul,
-                '+' => Token::Add,
-                '(' => Token::Open,
-                ')' => Token::Close,
-                d => Token::Num(d as i32 - '0' as i32)
-            })
-            .collect();
+        let tokens = Self::tokenize(s);
 
-        fn tree(tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
-            let mut i = 0;
-            let mut left = None;
-            let mut op = None;
-            let mut right = None;
-            while i < tokens.len() {
-                let t = tokens[i];
-                if left.is_none() {
-                    left.replace(match t {
-                        Token::Num(n) => Tree::Leaf(n),
-                        Token::Mul => {
-                            return Err(anyhow::Error::msg("Unexpected Mul"))
-                        },
-                        Token::Add => {
-                            return Err(anyhow::Error::msg("Unexpected Add"))
-                        },
-                        Token::Open => {
-                            let (branch, consumed) = tree(&tokens[i+1..])?;
-                            i += consumed;
-                            branch
-                        }
-                        Token::Close => {
-                            return Err(anyhow::Error::msg("Unexpected Close"));
-                        }
-                    });
-                } else if op.is_none() {
-                    op.replace(match t {
-                        Token::Mul => Token::Mul,
-                        Token::Add => Token::Add,
-                        Token::Close => {
-                            return Ok((left.take().unwrap(), i+1));
-                        },
-                        unexpected => {
-                            return Err(anyhow::Error::msg(format!("Expected op, got {:?}", unexpected)));
-                        }
-                    });
-                } else if right.is_none() {
-                    right.replace(match t {
-                        Token::Num(n) => Tree::Leaf(n),
-                        Token::Mul => {
-                            return Err(anyhow::Error::msg("Unexpected Mul"))
-                        },
-                        Token::Add => {
-                            return Err(anyhow::Error::msg("Unexpected Add"))
-                        },
-                        Token::Open => {
-                            let (branch, consumed) = tree(&tokens[i+1..])?;
-                            i += consumed;
-                            branch
-                        }
-                        Token::Close => {
-                            return Err(anyhow::Error::msg("Unexpected Close"));
-                        }
-                    });
-                    let branch = Tree::Branch {
-                        left: Box::new(left.take().unwrap()),
-                        op: op.unwrap(),
-                        right: Box::new(right.take().unwrap()),
-                    };
-                    left.replace(branch);
-                    op = None;
-                    right = None;
-                }
-
-                i += 1
-            }
-
-            Ok((left.unwrap(), i))
-        }
-
-        let (ret, _) = tree(&tokens)?;
+        let (ret, _) = FlatParser::parse_tree(&tokens)?;
         Ok(ret)
     }
 }
 
-impl Tree {
-    fn parse_with_precedence(s: &str) -> Result<Self, anyhow::Error> {
-        let tokens: Vec<Token> = s.chars()
-            .filter(|ch| !ch.is_whitespace())
-            .map(|ch| match ch {
-                '*' => Token::Mul,
-                '+' => Token::Add,
-                '(' => Token::Open,
-                ')' => Token::Close,
-                d => Token::Num(d as i32 - '0' as i32)
-            })
-            .collect();
+trait TreeParser {
+    fn parse_term(tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
+        Ok(match tokens[0] {
+            Token::Num(n) => (Tree::Leaf(n), 1),
+            Token::Open => {
+                let (tree, off) = Self::parse_tree(&tokens[1..])?;
+                (tree, off + 2)
+            }
+            _ => {
+                return Err(anyhow::Error::msg("Bad token in term"));
+            }
+        })
+    }
 
-        fn parse_term(tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
-            match tokens[0] {
-                Token::Num(n) => {
-                    Ok((Tree::Leaf(n), 1))
-                }
-                Token::Open => {
-                    let (tree, off) = parse_tree(&tokens[1..])?;
-                    Ok((tree, off + 2))
-                }
-                _ => {
-                    return Err(anyhow::Error::msg("Bad token in term"));
-                }
+    fn parse_tree(tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
+        let (mut left, mut off) = Self::parse_term(tokens)?;
+
+        while tokens.len() > off {
+            if tokens[off] != Token::Close {
+                let (op, op_off) = Self::parse_op(left, &tokens[off..])?;
+                left = op;
+                off += op_off;
+            } else {
+                return Ok((left, off));
             }
         }
 
-        fn parse_op(left: Tree, tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
-            match tokens[0] {
-                Token::Add => {
-                    let (right, right_off) = parse_term(&tokens[1..])?;
-                    let sum = Tree::Branch {
-                        left: Box::new(left),
-                        op: Token::Add,
-                        right: Box::new(right)
-                    };
-                    Ok((sum, 1 + right_off))
-                }
-                Token::Mul => {
-                    let (right, right_off) = parse_tree(&tokens[1..])?;
-                    let prod = Tree::Branch {
-                        left: Box::new(left),
-                        op: Token::Mul,
-                        right: Box::new(right)
-                    };
-                    Ok((prod, 1 + right_off))
-                }
-                _ => {
-                    return Err(anyhow::Error::msg(format!("Bad token in tree: {:?}", &tokens[0])));
-                }
+        Ok((left, off))
+    }
+
+    fn parse_op(left: Tree, tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error>;
+}
+
+struct PrecedenceParser {}
+
+impl TreeParser for PrecedenceParser {
+    fn parse_op(left: Tree, tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
+        let t = tokens[0];
+        let (op, off) = match t {
+            Token::Add => Self::parse_term(&tokens[1..])?,
+            Token::Mul => Self::parse_tree(&tokens[1..])?,
+            _ => {
+                return Err(anyhow::Error::msg(format!("Bad token in tree: {:?}", &t)));
             }
-        }
-
-        fn parse_tree(tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
-            let (mut left, mut off) = parse_term(tokens)?;
-
-            while tokens.len() > off {
-                if tokens[off] != Token::Close {
-                    let (op, op_off) = parse_op(left, &tokens[off..])?;
-                    left = op;
-                    off += op_off;
-                } else {
-                    return Ok((left, off))
-                }
-            }
-
-            Ok((left, off))
-        }
-
-        let (ret, _) = parse_tree(&tokens)?;
-        Ok(ret)
+        };
+        let ret = Tree::Branch {
+            left: Box::new(left),
+            op: t,
+            right: Box::new(op),
+        };
+        Ok((ret, 1 + off))
     }
 }
 
+struct FlatParser {}
+
+impl TreeParser for FlatParser {
+    fn parse_op(left: Tree, tokens: &[Token]) -> Result<(Tree, usize), anyhow::Error> {
+        let t = tokens[0];
+        let (op, off) = match t {
+            Token::Add => Self::parse_term(&tokens[1..])?,
+            Token::Mul => Self::parse_term(&tokens[1..])?,
+            _ => {
+                return Err(anyhow::Error::msg(format!("Bad token in tree: {:?}", &t)));
+            }
+        };
+        let ret = Tree::Branch {
+            left: Box::new(left),
+            op: t,
+            right: Box::new(op),
+        };
+        Ok((ret, 1 + off))
+    }
+}
 
 fn main() -> Result<()> {
     let input: Vec<Tree> = INPUT.lines().map(|l| l.parse().unwrap()).collect();
-    println!("Sum of trees: {}", input.iter().map(|t| t.eval() as i64).sum::<i64>());
+    println!(
+        "Sum of trees: {}",
+        input.iter().map(|t| t.eval() as i64).sum::<i64>()
+    );
 
-
-    let input2: Vec<Tree> = INPUT.lines().map(|l| Tree::parse_with_precedence(l).unwrap()).collect();
-    // dbg!(&input2);
-    println!("Sum of trees: {}", input2.iter().map(|t| t.eval() as i64).sum::<i64>());
+    let input2: Vec<Tree> = INPUT
+        .lines()
+        .map(|l| Tree::parse_with_precedence(l).unwrap())
+        .collect();
+    println!(
+        "Sum of trees: {}",
+        input2.iter().map(|t| t.eval() as i64).sum::<i64>()
+    );
 
     Ok(())
 }
-
-const TEST: &str = "((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2";
 
 const INPUT: &str = r#"6 * ((5 * 3 * 2 + 9 * 4) * (8 * 8 + 2 * 3) * 5 * 8) * 2 + (4 + 9 * 5 * 5 + 8) * 4
 2 + (3 + 3 + (9 + 3 * 4 * 9) + 2 + 5 * 7) * 7 * (3 * 6 * 5 * 9 + 6) + 6
