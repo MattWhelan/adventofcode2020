@@ -1,10 +1,10 @@
 use anyhow::Result;
-use std::str::FromStr;
-use std::collections::{HashMap, HashSet};
-use regex::Regex;
-use lazy_static::lazy_static;
 use itertools::Itertools;
+use lazy_static::lazy_static;
+use regex::Regex;
+use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum RuleTree {
@@ -16,7 +16,7 @@ enum RuleTree {
 enum RuleTokens {
     Literal(String),
     Ref(u32),
-    Alt
+    Alt,
 }
 
 impl RuleTree {
@@ -24,15 +24,15 @@ impl RuleTree {
         if let RuleTokens::Literal(l) = &tokens[0] {
             (RuleTree::Leaf(l.clone()), 1)
         } else {
-            let rt = tokens.split(|t| matches!(t, RuleTokens::Alt))
+            let rt = tokens
+                .split(|t| matches!(t, RuleTokens::Alt))
                 .map(|ts| {
-                    let ids: Vec<u32> = ts.iter()
-                        .map(|t| {
-                            match t {
-                                RuleTokens::Literal(_) => unreachable!(),
-                                RuleTokens::Ref(id) => *id,
-                                RuleTokens::Alt => unreachable!()
-                            }
+                    let ids: Vec<u32> = ts
+                        .iter()
+                        .map(|t| match t {
+                            RuleTokens::Literal(_) => unreachable!(),
+                            RuleTokens::Ref(id) => *id,
+                            RuleTokens::Alt => unreachable!(),
                         })
                         .collect();
                     RuleTree::RefList(ids)
@@ -48,10 +48,11 @@ impl FromStr for RuleTree {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let tokens: Vec<_> = s.split_whitespace()
+        let tokens: Vec<_> = s
+            .split_whitespace()
             .map(|s| {
                 if s.starts_with("\"") {
-                    RuleTokens::Literal(s[1..s.len()-1].to_string())
+                    RuleTokens::Literal(s[1..s.len() - 1].to_string())
                 } else if s == "|" {
                     RuleTokens::Alt
                 } else {
@@ -100,11 +101,10 @@ fn rules_to_string(rt: &RuleTree, rules: &HashMap<u32, RuleTree>) -> String {
             let right_str = rules_to_string(&r, &rules);
             format!("(?:{}|{})", left_str, right_str)
         }
-        RuleTree::RefList(refs) => {
-            refs.iter()
-                .map(|r| rules_to_string(rules.get(r).unwrap(), rules))
-                .join("")
-        }
+        RuleTree::RefList(refs) => refs
+            .iter()
+            .map(|r| rules_to_string(rules.get(r).unwrap(), rules))
+            .join(""),
     }
 }
 
@@ -129,14 +129,13 @@ fn part1() {
     let rule_lines = parts.next().unwrap();
     let messages = parts.next().unwrap();
 
-    let rules: HashMap<u32, RuleTree> = rule_lines.lines()
+    let rules: HashMap<u32, RuleTree> = rule_lines
+        .lines()
         .map(|l| l.parse::<Rule>().unwrap().into())
         .collect();
 
     let re = rules_to_regex(rules);
-    let valid_count = messages.lines()
-        .filter(|m| re.is_match(m))
-        .count();
+    let valid_count = messages.lines().filter(|m| re.is_match(m)).count();
 
     println!("Valid: {}", valid_count);
 }
@@ -147,15 +146,17 @@ fn part2() {
     let rule_lines = parts.next().unwrap();
     let messages = parts.next().unwrap();
 
-    let rules: HashMap<u32, RuleTree> = rule_lines.lines()
-        .chain(r#"8: 42 | 42 8
-11: 42 31 | 42 11 31"#.lines())
+    let rules: HashMap<u32, RuleTree> = rule_lines
+        .lines()
+        .chain(
+            r#"8: 42 | 42 8
+11: 42 31 | 42 11 31"#
+                .lines(),
+        )
         .map(|l| l.parse::<Rule>().unwrap().into())
         .collect();
 
-    let valid_count = messages.lines()
-        .filter(|m| matches(&rules, m))
-        .count();
+    let valid_count = messages.lines().filter(|m| matches(&rules, m)).count();
 
     println!("Valid 2: {}", valid_count);
 }
@@ -188,7 +189,7 @@ fn apply(rule: &RuleTree, rules: &HashMap<u32, RuleTree>, s: &str) -> Result<Vec
     match rule {
         RuleTree::Leaf(l) => {
             if s.starts_with(l) {
-                Ok(vec!(l.len()))
+                Ok(vec![l.len()])
             } else {
                 Err(())
             }
