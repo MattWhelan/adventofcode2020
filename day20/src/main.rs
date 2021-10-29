@@ -1,15 +1,18 @@
+use std::collections::HashMap;
 use anyhow::Result;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use itertools::Itertools;
 use num::integer::Roots;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 enum Pixel {
     On,
     Off,
+    Marked,
 }
 
 impl From<char> for Pixel {
@@ -26,6 +29,7 @@ impl Display for Pixel {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Pixel::On => write!(f, "#"),
+            Pixel::Marked => write!(f, "O"),
             Pixel::Off => write!(f, "."),
         }
     }
@@ -39,11 +43,83 @@ struct Tile {
 
 impl Tile {
     fn borders(&self) -> impl Iterator<Item=Vec<Pixel>> {
-        let border_list = vec![self.image[0].clone(),
-            self.image.iter().map(|row| row[0]).collect(),
+        let border_list = vec![
+            self.image[0].clone(),
             self.image.iter().map(|row| row[row.len()-1]).collect(),
-            self.image[self.image.len()-1].clone()];
+            self.image[self.image.len()-1].clone(),
+            self.image.iter().map(|row| row[0]).collect(),
+        ];
         border_list.into_iter()
+    }
+
+    fn flip(&self) -> Tile {
+        let mut img = self.image.clone();
+        img.reverse();
+        Tile {
+            id: self.id,
+            image: img
+        }
+    }
+
+    fn rotate_cw(&self) -> Tile {
+        let mut img = self.image.clone();
+        let size = img.len();
+        for i in 0..size {
+            for j in 0..size {
+                img[i][j] = self.image[size-j-1][i]
+            }
+        }
+        Tile {
+            id: self.id,
+            image: img
+        }
+    }
+
+    fn trimmed(&self) -> Tile {
+        let mut img = Vec::from(&self.image[1..self.image.len()-1]);
+        img.iter_mut().for_each(|row| {
+            row.pop();
+            row.remove(0);
+        });
+
+        Tile {
+            id: self.id,
+            image: img
+        }
+    }
+
+    fn find(&self, needle: &Tile) -> Vec<(usize, usize)> {
+        let mut ret = Vec::new();
+
+        let h = needle.image.len();
+        let w = needle.image[0].len();
+        for i in 0..self.image.len()-h {
+            for j in 0..self.image[i].len()-w {
+                let mut found = true;
+                for s in 0..h {
+                    for t in 0..w {
+                        if needle.image[s][t] == Pixel::On && self.image[i+s][j+t] == Pixel::Off {
+                            found = false;
+                            break;
+                        }
+                    }
+                    if !found {
+                        break;
+                    }
+                }
+                if found {
+                    ret.push((i,j))
+                }
+            }
+        }
+
+        ret
+    }
+
+    fn count_on(&self) -> usize {
+        self.image.iter()
+            .map(|row| row.iter().filter(|&p| *p == Pixel::On).count())
+            .sum()
     }
 }
 
@@ -67,6 +143,15 @@ impl FromStr for Tile {
             id: caps[1].parse()?,
             image: grid,
         })
+    }
+}
+
+impl Display for Tile {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let s = self.image.iter()
+            .map(|row| row.iter().map(|p| p.to_string()).collect::<String>())
+            .join("\n");
+        write!(f, "{}", &s)
     }
 }
 
@@ -104,9 +189,134 @@ fn main() -> Result<()> {
     println!("Corner Product: {}", part1);
 
     let start = corners[0];
+    println!("{}\n", &start);
 
+    let start = (0..3 as usize).filter_map(|n| {
+        let mut t = start.clone();
+        for _ in 0..n {
+            t = t.rotate_cw();
+        }
+        let mut match_count = 0;
+        for b in t.borders().skip(1).take(2) {
+            for tile in input.iter() {
+                if tile != start {
+                    match_count += find_border_matches(&b, tile);
+                }
+            }
+        }
+        if match_count == 2 {
+            Some(t)
+        } else {
+            dbg!(&match_count);
+            None
+        }
+    }).next().unwrap();
+
+    //Now we have oriented our start
+    println!("{}", &start);
+
+    let mut available = input.iter()
+        .map(|t| (t.id, t.clone()))
+        .collect::<HashMap<_,_>>();
+
+    let mut grid : Vec<Vec<Tile>> = Vec::new();
+    for i in 0..square_size {
+        grid.push(Vec::new());
+        for j in 0..square_size {
+            if i == 0 && j == 0 {
+                grid[i].push(start.clone());
+                available.remove(&start.id);
+            } else {
+                let mut above = None;
+                let mut left = None;
+                if i > 0 {
+                    above = grid[i-1][j].borders().nth(2);
+                }
+                if j > 0 {
+                    left = grid[i][j-1].borders().nth(1);
+                }
+                // For each available tile, try it against the edges
+                let next_tile = available.values()
+                    .flat_map(|t| {
+                        rot_flip(t)
+                    }).filter(|t| {
+                        let b = t.borders().collect::<Vec<_>>();
+                        if let (Some(a), Some(l)) = (above.as_ref(), left.as_ref()) {
+                            a == &b[0] && l == &b[3]
+                        } else if let Some(a) = above.as_ref() {
+                            a == &b[0]
+                        } else if let Some(l) = left.as_ref() {
+                            l == &b[3]
+                        } else {
+                            false
+                        }
+                    }).next().unwrap();
+                available.remove(&next_tile.id);
+                grid[i].push(next_tile);
+            }
+        }
+    }
+
+    let full_image = grid.iter().flat_map(|tile_row| {
+        let trimmed_row = tile_row.iter().map(|t| t.trimmed()).collect::<Vec<_>>();
+        (0..trimmed_row[0].image.len()).map(move |i| {
+            trimmed_row.iter()
+                .map(|t| &t.image[i])
+                .flatten()
+                .copied()
+                .collect::<Vec<Pixel>>()
+        })
+    }).collect::<Vec<Vec<Pixel>>>();
+    let big_tile = Tile {
+        id: 0,
+        image: full_image,
+    };
+
+    let seamonster_pat = r"Tile 1:
+..................#.
+#....##....##....###
+.#..#..#..#..#..#...";
+
+    let monster = Tile::from_str(seamonster_pat).unwrap();
+
+    let big_tile = rot_flip(&big_tile).iter()
+        .filter(|&t| {
+            !t.find(&monster)
+                .is_empty()
+        })
+        .next().unwrap().clone();
+
+    println!("\nMap:\n{}\n", &big_tile);
+
+    let monster_count = monster.count_on();
+
+    let positions = big_tile.find(&monster);
+    let map_count = big_tile.count_on();
+    dbg!(map_count - monster_count*positions.len());
 
     Ok(())
+}
+
+fn rot_flip(t: &Tile) -> Vec<Tile> {
+    let a = t.clone();
+    let b = t.rotate_cw();
+    let c = b.rotate_cw();
+    let d = c.rotate_cw();
+
+    let f = t.flip();
+    let g = f.rotate_cw();
+    let h = g.rotate_cw();
+    let i = h.rotate_cw();
+    vec![
+        a,
+        b,
+        c,
+        d,
+        f,
+        g,
+        h,
+        i,
+    ]
 }
 
 const INPUT: &str = r#"Tile 1051:
