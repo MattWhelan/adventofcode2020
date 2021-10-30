@@ -1,6 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use anyhow::Result;
 use std::str::FromStr;
+use itertools::Itertools;
 
 #[derive(Debug)]
 struct Record {
@@ -55,7 +56,36 @@ fn main() -> Result<()> {
 
     println!("Innocent ingredient occurrences: {}", innocent_count);
 
-    // dbg!(&allergens);
+    let mut allergens = allergen_map.clone();
+    let mut singleton_keys: Vec<_> = allergens.iter()
+        .filter(|(_k, v)| v.len() == 1)
+        .map(|(&k, v)| (k.to_string(), v.iter().next().unwrap().clone()))
+        .collect();
+    while singleton_keys.len() > 0 {
+        let keys: Vec<_> = allergens.keys().cloned().collect();
+        let mut new_singletons = Vec::new();
+        for k in keys {
+            let v = allergens.get_mut(k).unwrap();
+            if v.len() != 1 {
+                for sk in singleton_keys.iter() {
+                    v.remove(&sk.1);
+                }
+                if v.len() == 1 {
+                    new_singletons.push((k.to_string(), v.iter().next().unwrap().to_string()));
+                }
+            }
+        }
+        singleton_keys = new_singletons;
+    }
+
+    dbg!(&allergens);
+
+    let alpha_allergens: BTreeMap<String, String> = allergens.iter()
+        .map(|(k, v)| (k.to_string(), v.iter().next().unwrap().to_string()))
+        .collect();
+
+    let result = alpha_allergens.values().join(",");
+    println!("Result: {}", &result);
 
     Ok(())
 }
